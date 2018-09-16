@@ -1,0 +1,46 @@
+----------------------------------------------------------------------------------
+-- Company:    JHU EP
+-- Engineer:   Ryan Newport
+-- 
+-- Create Date:   09/15/2018 
+-- Module Name:   tb_pulse_generator
+-- Project Name:  Lab02
+--
+-- Description:  testbench for pulse generator entity
+----------------------------------------------------------------------------------
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.all;
+use IEEE.numeric_std.all;
+use work.all;
+
+-- empty tb_pulse_generator entity
+entity tb_pulse_generator is
+end entity tb_pulse_generator;
+
+architecture tb of tb_pulse_generator is 
+  signal clk        : STD_LOGIC;
+  signal rst        : STD_LOGIC;
+  signal max_cnt    : unsigned(16 downto 0);
+  signal pulse_1kHz : STD_LOGIC;
+  
+begin
+  UUT: entity work.pulse_generator(rtl) 
+      Port map(
+        i_clk     => clk,
+        i_reset   => rst,
+        i_max_cnt => max_cnt,
+        o_pulse   => pulse_1kHz);
+  
+  rst     <= '0', '1' after 20 ns, '0' after 100 ns;
+  max_cnt <= '1' & x"86A0";  -- hex for 100,000
+  
+  process -- no sensitivity list
+  begin
+    clk <= '1';
+    wait for 5 ns;
+    clk <= '0';
+    wait for 5 ns;
+  end process;        -- 100 MHz clock (10 ns period)       
+  
+end architecture tb;
