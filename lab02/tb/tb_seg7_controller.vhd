@@ -40,7 +40,7 @@ begin
       o_AN    => AN,            -- STD_LOGIC_VECTOR(7 downto 0)
       o_EN    => SEG7_CATH);    -- STD_LOGIC_VECTOR(7 downto 0)  
   
-  rst     <= '0', '1' after 20 ns, '0' after 100 ns;
+  rst <= '0', '1' after 20 ns, '0' after 100 ns;
   
   process -- no sensitivity list
   begin
