@@ -17,3 +17,10 @@
 *.ini
 *.vstf
 *.bak
+*.cache/
+*.hw/
+*.runs/
+*lab0_seg_7.vhd
+*.prm
+*/work/
+

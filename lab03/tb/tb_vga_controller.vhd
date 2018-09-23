@@ -2,11 +2,11 @@
 -- Company:    JHU EP
 -- Engineer:   Ryan Newport
 -- 
--- Create Date:   09/22/2018 
--- Module Name:   tb_pgen_25MHz
+-- Create Date:   09/23/2018 
+-- Module Name:   tb_vga_controller
 -- Project Name:  Lab03
 --
--- Description:  testbench for pulse generator entity
+-- Description:  testbench for vga_controller entity
 ----------------------------------------------------------------------------------
 
 library IEEE;
@@ -14,30 +14,30 @@ use IEEE.STD_LOGIC_1164.all;
 use IEEE.numeric_std.all;
 use work.all;
 
--- empty tb_pgen_25MHz entity
-entity tb_pgen_25MHz is
-end entity tb_pgen_25MHz;
+-- empty tb_vga_controller entity
+entity tb_vga_controller is
+end entity tb_vga_controller;
 
-architecture tb of tb_pgen_25MHz is 
+architecture tb of tb_vga_controller is 
   signal clk   : STD_LOGIC;
   signal rst   : STD_LOGIC;
-  signal pulse : STD_LOGIC;
+
   
 begin
-  UUT: entity work.pgen_25MHz(rtl) 
+  UUT: entity work.vga_controller(rtl) 
       Port map(
         i_clk     => clk,
-        i_rst     => rst,
-        o_pulse   => pulse);
+        i_rst     => rst);
   
   rst     <= '0', '1' after 20 ns, '0' after 100 ns;
   
+  -- generate 100 MHz clock (10 ns period)
   process -- no sensitivity list
   begin
     clk <= '1';
     wait for 5 ns;
     clk <= '0';
     wait for 5 ns;
-  end process;        -- 100 MHz clock (10 ns period)       
+  end process;   
   
 end architecture tb;
