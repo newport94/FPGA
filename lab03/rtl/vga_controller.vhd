@@ -47,9 +47,9 @@ signal q_h_cnt, q_v_cnt, d_h_cnt, d_v_cnt : unsigned(9 downto 0);
 
 begin
 -- assign outputs
-o_vga_red  <= "111" & w_vga_red;
-o_vga_grn  <= "000" & w_vga_grn;
-o_vga_blu  <= "000" & w_vga_blu;
+o_vga_red  <= w_vga_red & w_vga_red & w_vga_red & w_vga_red;
+o_vga_grn  <= w_vga_grn & w_vga_grn & w_vga_grn & w_vga_grn;
+o_vga_blu  <= w_vga_blu & w_vga_blu & w_vga_blu & w_vga_blu;
 o_h_sync   <= w_hsync;
 o_v_sync   <= w_vsync;
 
@@ -79,7 +79,7 @@ p_color : process(q_h_cnt, q_v_cnt)
 end process p_color;
 
 -- generate horizontal and vertical counters
-p_cntrs : process(i_clk,i_rst)
+p_cntrs : process(i_clk, i_rst)
   begin
     if (i_rst = '1') then 
       q_h_cnt <= (others => '0');
