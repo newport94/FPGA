@@ -25,45 +25,53 @@ end entity debounce;
   
 architecture rtl of debounce is 
 
-constant k_max_val    : unsigned(18 downto 0) := "111" & x"A120";  -- 5 ms assuming a 100 MHz clk 7A120
--- constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
-signal   q_ctr, d_ctr : unsigned(18 downto 0);
+--constant k_max_val    : unsigned(24 downto 0) := "1" & x"7D7840";  -- 250 ms assuming a 100 MHz clk 7A120       17D7840
+ constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
+signal   q_ctr : unsigned(24 downto 0);
 
 signal w_ctr_clr, w_ctr_en : std_logic;
-
+signal d_db, q_db, w_red : std_logic;
 
 begin
-
-  d_ctr <= q_ctr + 1;
-
-  S_Clk : process(i_clk, i_rst)
-  begin
-    if (i_rst = '1') then
-      q_ctr <= (others => '0');  -- asynchronous reset
-    elsif (rising_edge(i_clk)) then
-      if (w_ctr_clr = '1') then
-        q_ctr <= (others => '0');
-      elsif (w_ctr_en = '1') then
-        q_ctr <= d_ctr;
-      end if;
-    end if;
-  end process S_Clk;
+  
+o_db <= d_db AND NOT q_db;  
   
   C_Debounce : process(i_pb, q_ctr)
   begin
-    o_db      <= '0';
+    d_db      <= '0';
     w_ctr_clr <= '0';
     w_ctr_en  <= '0';
     if (i_pb = '1') then
       if (q_ctr < k_max_val) then
         w_ctr_en <= '1';
       else
-        o_db <= '1';
+        d_db <= '1';
       end if;
     else
       w_ctr_clr <= '1';
-    end if; 
+    end if;
+     
   end process C_Debounce;
+  
+  
+
+  --- sequential process
+  S_Clk : process(i_clk, i_rst)
+  begin
+    if (i_rst = '1') then
+      q_ctr <= (others => '0');  -- asynchronous reset
+    elsif (rising_edge(i_clk)) then
+      
+      q_db <= d_db;
+      
+      if (w_ctr_clr = '1') then
+        q_ctr <= (others => '0');
+      elsif (w_ctr_en = '1') then
+        q_ctr <= q_ctr + 1;
+      end if;
+        
+    end if;
+  end process S_Clk;
 
 
 end architecture rtl;
