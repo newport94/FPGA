@@ -11,10 +11,8 @@ sim:/tb_vga_controller/UUT/i_rst \
 sim:/tb_vga_controller/UUT/w_en25 \
 sim:/tb_vga_controller/UUT/w_hsync \
 sim:/tb_vga_controller/UUT/w_h_rst \
-sim:/tb_vga_controller/UUT/d_h_cnt \
 sim:/tb_vga_controller/UUT/q_h_cnt \
 sim:/tb_vga_controller/UUT/w_vsync \
-sim:/tb_vga_controller/UUT/d_v_cnt \
 sim:/tb_vga_controller/UUT/w_v_rst \
 sim:/tb_vga_controller/UUT/q_v_cnt \
 sim:/tb_vga_controller/UUT/w_vga_red \
