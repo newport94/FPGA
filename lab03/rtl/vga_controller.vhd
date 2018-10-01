@@ -85,7 +85,7 @@ signal w_en25, w_hsync, w_vsync : std_logic;
 signal w_h_rst, w_v_rst, w_cmp : std_logic;
 signal q_h_cnt, q_v_cnt, d_h_cnt, d_v_cnt : unsigned(9 downto 0);
 
-signal w_h_red_low, w_h_red_high, w_v_red_low, w_v_red_high : unsigned(9 downto 0);
+signal w_h_red_low, w_v_red_low  : unsigned(9 downto 0);
 
 signal w_h_cmp, w_v_cmp, w_square : std_logic;
 
@@ -107,13 +107,13 @@ begin
   
   elsif (rising_edge(i_clk)) then
     if (i_db_up   = '1') then
-      if ((w_v_red_low - 32) < 0) then
+      if ((w_v_red_low - 32) >= 992) then
         w_v_red_low <= to_unsigned(448, 10);        -- reset to y max = index 15 = 480 - 32 = 448
       else
         w_v_red_low  <= w_v_red_low  - 32;
       end if;
     elsif (i_db_left = '1') then
-      if ((w_h_red_low - 32) < 0) then
+      if ((w_h_red_low - 32) >= 992) then
         w_h_red_low <= to_unsigned(608, 10); --640 - 32 = 608
       else
         w_h_red_low  <= w_h_red_low  - 32;
