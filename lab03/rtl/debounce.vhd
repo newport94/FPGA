@@ -25,16 +25,17 @@ end entity debounce;
   
 architecture rtl of debounce is 
 
---constant k_max_val    : unsigned(24 downto 0) := "1" & x"7D7840";  -- 250 ms assuming a 100 MHz clk 7A120       17D7840
- constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
+constant k_max_val    : unsigned(23 downto 0) := to_unsigned(10000000, 24); -- 100 ms assuming a 100 MHz clk
+--constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
 signal   q_ctr : unsigned(24 downto 0);
 
 signal w_ctr_clr, w_ctr_en : std_logic;
 signal d_db, q_db, w_red : std_logic;
 
 begin
-  
-o_db <= d_db AND NOT q_db;  
+ 
+  -- rising edge detect
+  o_db <= d_db AND NOT q_db;  
   
   C_Debounce : process(i_pb, q_ctr)
   begin

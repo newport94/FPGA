@@ -8,6 +8,7 @@
 --
 -- Description:  vga controller for lab 03
 --
+-- screen:  15 rows by 20 columns, 480 x 640 = 32 by 32 pixles for each square
 --
 -- 0   = 0x00 = 0000_0000
 -- 31  = 0x1F = 0001_1111   E 0X_XXXX
@@ -44,34 +45,49 @@ use work. all;
 
 entity vga_controller is
   Port(
-    i_clk     : in     std_logic;
-    i_rst     : in     std_logic;
-    o_vga_red :   out  std_logic_vector(3 downto 0);
-    o_vga_grn :   out  std_logic_vector(3 downto 0);
-    o_vga_blu :   out  std_logic_vector(3 downto 0);
-    o_h_sync  :   out  std_logic;
-    o_v_sync  :   out  std_logic);
+    i_clk      : in     std_logic;
+    i_rst      : in     std_logic;
+    i_db_up    : in     std_logic;
+    i_db_left  : in     std_logic;
+    i_db_right : in     std_logic;
+    i_db_down  : in     std_logic;
+    o_vga_red  :   out  std_logic_vector(3 downto 0);
+    o_vga_grn  :   out  std_logic_vector(3 downto 0);
+    o_vga_blu  :   out  std_logic_vector(3 downto 0);
+    o_h_sync   :   out  std_logic;
+    o_v_sync   :   out  std_logic;
+    o_y_index  :   out  std_logic_vector(7 downto 0);
+    o_x_index  :   out  std_logic_vector(7 downto 0));
 end entity vga_controller;
 
 architecture rtl of vga_controller is
 
-constant k_h_max       : unsigned(9 downto 0) := to_unsigned(799, 10); --"11" & x"1F"; -- d799 = 0x31F          
-constant k_h_sync_low  : unsigned(9 downto 0) := to_unsigned(656, 10); --"10" & x"90"; -- d656 = 0x290
-constant k_h_sync_high : unsigned(9 downto 0) := to_unsigned(752, 10); --"10" & x"F0"; -- d752 = 0x2F0
---constant k_h_red       : unsigned(9 downto 0) := "10" & x"80"; -- d640 = 0x280
---constant k_zero        : unsigned(9 downto 0) := "00" & x"00";
 
-constant k_v_max       : unsigned(9 downto 0) := to_unsigned(520, 10); --"10" & x"08"; -- d520 = 0x208
-constant k_v_sync_low  : unsigned(9 downto 0) := to_unsigned(490, 10); --"01" & x"EA"; -- d490 = 0x1EA
-constant k_v_sync_high : unsigned(9 downto 0) := to_unsigned(492, 10); --"01" & x"EC"; -- d492 = 0x1EC
---constant k_v_red       : unsigned(9 downto 0) := "01" & x"E0"; -- d480 = 0x1E0
+-- red square constants 
+constant k_h_rst : unsigned(9 downto 0) := to_unsigned(31,10);
+constant k_v_rst : unsigned(9 downto 0) := to_unsigned(31,10);
 
 
+-- horizontal counter constants
+constant k_h_max       : unsigned(9 downto 0) := to_unsigned(799, 10);    
+constant k_h_sync_low  : unsigned(9 downto 0) := to_unsigned(656, 10);
+constant k_h_sync_high : unsigned(9 downto 0) := to_unsigned(752, 10);
+
+-- vertical counter constants 
+constant k_v_max       : unsigned(9 downto 0) := to_unsigned(520, 10);
+constant k_v_sync_low  : unsigned(9 downto 0) := to_unsigned(490, 10);
+constant k_v_sync_high : unsigned(9 downto 0) := to_unsigned(492, 10);
+
+
+-- signal declarations
 signal w_vga_red, w_vga_grn, w_vga_blu : std_logic;
 signal w_en25, w_hsync, w_vsync : std_logic;
 signal w_h_rst, w_v_rst, w_cmp : std_logic;
 signal q_h_cnt, q_v_cnt, d_h_cnt, d_v_cnt : unsigned(9 downto 0);
 
+signal w_h_red_low, w_h_red_high, w_v_red_low, w_v_red_high : unsigned(9 downto 0);
+
+signal w_h_cmp, w_v_cmp, w_square : std_logic;
 
 begin
   
@@ -82,46 +98,79 @@ o_vga_blu  <= w_vga_blu & w_vga_blu & w_vga_blu & w_vga_blu;
 o_h_sync   <= w_hsync;
 o_v_sync   <= w_vsync;
 
-
-w_vga_red <= '0';
-w_cmp <= q_h_cnt(5) XOR q_v_cnt(5);
-
-p_color : process (w_cmp)
+-- move red square
+C_square : process(i_clk, i_rst, i_db_up, i_db_left, i_db_right, i_db_down)
 begin
-    if (w_cmp = '0') then
+  if (i_rst = '1') then
+    w_h_red_low  <= (others => '0');
+    w_v_red_low  <= (others => '0');
+  
+  elsif (rising_edge(i_clk)) then
+    if (i_db_up   = '1') then
+      if ((w_v_red_low - 32) < 0) then
+        w_v_red_low <= to_unsigned(448, 10);        -- reset to y max = index 15 = 480 - 32 = 448
+      else
+        w_v_red_low  <= w_v_red_low  - 32;
+      end if;
+    elsif (i_db_left = '1') then
+      if ((w_h_red_low - 32) < 0) then
+        w_h_red_low <= to_unsigned(608, 10); --640 - 32 = 608
+      else
+        w_h_red_low  <= w_h_red_low  - 32;
+      end if;
+    elsif (i_db_right = '1') then
+      if ((w_h_red_low + 32) >= 640) then
+        w_h_red_low <= (others => '0');
+      else
+        w_h_red_low  <= w_h_red_low  + 32;
+      end if;
+    elsif (i_db_down = '1') then
+      if ((w_v_red_low + 32) >= 480) then
+        w_v_red_low <= (others => '0');
+      else
+        w_v_red_low  <= w_v_red_low  + 32;
+      end if;
+    end if;
+  end if;
+end process;
+
+-- red square indices for 7 seg display
+o_x_index <= std_logic_vector(resize(shift_right(w_h_red_low, 5),8));
+o_y_index <= std_logic_vector(resize(shift_right(w_v_red_low, 5),8));
+
+-- assign colors
+w_h_cmp  <= '1' when (q_h_cnt >= w_h_red_low) AND (q_h_cnt < (w_h_red_low + 32)) else '0';
+w_v_cmp  <= '1' when (q_v_cnt >= w_v_red_low) AND (q_v_cnt < (w_v_red_low + 32)) else '0';
+w_square <= '1' when w_h_cmp = '1' AND w_v_cmp = '1' else '0';
+w_cmp    <= q_h_cnt(5) XOR q_v_cnt(5);
+
+C_color : process (w_cmp, w_square)
+begin
+    if (w_square = '1') then
+      w_vga_red <= '1';
+      w_vga_grn <= '0';
+      w_vga_blu <= '0';
+    
+    elsif (w_cmp = '0') then
+      w_vga_red <= '0';
       w_vga_grn <= '1';
       w_vga_blu <= '0';
     else
+      w_vga_red <= '0';
       w_vga_grn <= '0';
       w_vga_blu <= '1';
     end if;
 end process;
         
   
----- assign colors
---w_vga_grn <= '0';
---w_vga_blu <= '0';
---
---p_color : process(q_h_cnt, q_v_cnt)
---  begin
---    if (q_h_cnt >= k_zero AND q_h_cnt < k_h_red) then
---      w_vga_red <= '1';
---    else
---      w_vga_red <= '0';
---    end if;
---end process p_color;
-
-
 
 -- generate counter resets with mux
 w_h_rst <= '1' when q_h_cnt = k_h_max else '0';
 w_v_rst <= '1' when q_v_cnt = k_v_max else '0';
 
-
 -- generate sync signals
 w_hsync <= '0' when q_h_cnt >= k_h_sync_low AND q_h_cnt < k_h_sync_high else '1';
 w_vsync <= '0' when q_v_cnt >= k_v_sync_low AND q_v_cnt < k_v_sync_high else '1';
-  
   
 -- Sequential to generate horizontal and vertical counters
 S_cntrs : process(i_clk, i_rst)

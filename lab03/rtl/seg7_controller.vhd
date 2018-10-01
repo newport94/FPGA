@@ -50,7 +50,7 @@ architecture rtl of seg7_controller is
   signal   w_an_sel  : STD_LOGIC_VECTOR(2 downto 0);
   
 begin
-  PGEN: entity work.pulse_generator(rtl)
+  PGEN_1KHZ: entity work.pgen_1kHz(rtl)
     Port map(
       i_clk     => i_clk,
       i_reset   => i_rst,
