@@ -83,9 +83,9 @@ constant k_v_sync_high : unsigned(9 downto 0) := to_unsigned(492, 10);
 signal w_vga_red, w_vga_grn, w_vga_blu : std_logic;
 signal w_en25, w_hsync, w_vsync : std_logic;
 signal w_h_rst, w_v_rst, w_cmp : std_logic;
-signal q_h_cnt, q_v_cnt, d_h_cnt, d_v_cnt : unsigned(9 downto 0);
+signal q_h_cnt, q_v_cnt : unsigned(9 downto 0);
 
-signal w_h_red_low, w_v_red_low  : unsigned(9 downto 0);
+signal q_h_red_low, q_v_red_low  : unsigned(9 downto 0);
 
 signal w_h_cmp, w_v_cmp, w_square : std_logic;
 
@@ -99,48 +99,48 @@ o_h_sync   <= w_hsync;
 o_v_sync   <= w_vsync;
 
 -- move red square
-C_square : process(i_clk, i_rst, i_db_up, i_db_left, i_db_right, i_db_down)
+S_square : process(i_clk, i_rst)
 begin
   if (i_rst = '1') then
-    w_h_red_low  <= (others => '0');
-    w_v_red_low  <= (others => '0');
+    q_h_red_low  <= (others => '0');
+    q_v_red_low  <= (others => '0');
   
   elsif (rising_edge(i_clk)) then
     if (i_db_up   = '1') then
-      if ((w_v_red_low - 32) >= 992) then
-        w_v_red_low <= to_unsigned(448, 10);        -- reset to y max = index 15 = 480 - 32 = 448
+      if ((q_v_red_low - 32) >= 992) then
+        q_v_red_low <= to_unsigned(448, 10);        -- reset to y max = index 15 = 480 - 32 = 448
       else
-        w_v_red_low  <= w_v_red_low  - 32;
+        q_v_red_low  <= q_v_red_low  - 32;
       end if;
     elsif (i_db_left = '1') then
-      if ((w_h_red_low - 32) >= 992) then
-        w_h_red_low <= to_unsigned(608, 10); --640 - 32 = 608
+      if ((q_h_red_low - 32) >= 992) then
+        q_h_red_low <= to_unsigned(608, 10); --640 - 32 = 608
       else
-        w_h_red_low  <= w_h_red_low  - 32;
+        q_h_red_low  <= q_h_red_low  - 32;
       end if;
     elsif (i_db_right = '1') then
-      if ((w_h_red_low + 32) >= 640) then
-        w_h_red_low <= (others => '0');
+      if ((q_h_red_low + 32) >= 640) then
+        q_h_red_low <= (others => '0');
       else
-        w_h_red_low  <= w_h_red_low  + 32;
+        q_h_red_low  <= q_h_red_low  + 32;
       end if;
     elsif (i_db_down = '1') then
-      if ((w_v_red_low + 32) >= 480) then
-        w_v_red_low <= (others => '0');
+      if ((q_v_red_low + 32) >= 480) then
+        q_v_red_low <= (others => '0');
       else
-        w_v_red_low  <= w_v_red_low  + 32;
+        q_v_red_low  <= q_v_red_low  + 32;
       end if;
     end if;
   end if;
 end process;
 
 -- red square indices for 7 seg display
-o_x_index <= std_logic_vector(resize(shift_right(w_h_red_low, 5),8));
-o_y_index <= std_logic_vector(resize(shift_right(w_v_red_low, 5),8));
+o_x_index <= std_logic_vector(resize(shift_right(q_h_red_low, 5),8));
+o_y_index <= std_logic_vector(resize(shift_right(q_v_red_low, 5),8));
 
 -- assign colors
-w_h_cmp  <= '1' when (q_h_cnt >= w_h_red_low) AND (q_h_cnt < (w_h_red_low + 32)) else '0';
-w_v_cmp  <= '1' when (q_v_cnt >= w_v_red_low) AND (q_v_cnt < (w_v_red_low + 32)) else '0';
+w_h_cmp  <= '1' when (q_h_cnt >= q_h_red_low) AND (q_h_cnt < (q_h_red_low + 32)) else '0';
+w_v_cmp  <= '1' when (q_v_cnt >= q_v_red_low) AND (q_v_cnt < (q_v_red_low + 32)) else '0';
 w_square <= '1' when w_h_cmp = '1' AND w_v_cmp = '1' else '0';
 w_cmp    <= q_h_cnt(5) XOR q_v_cnt(5);
 
