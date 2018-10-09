@@ -76,6 +76,8 @@ begin
       o_AN    => AN,
       o_EN    => SEG7_CATH);
 
+
+  -- simplify with generate statements
   UP_BUTTON : entity work.debounce(rtl) 
     Port map(
       i_clk => CLK100MHZ,   -- 100 MHz clk

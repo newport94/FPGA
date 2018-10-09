@@ -31,10 +31,31 @@ end entity acell_spi_rw;
 
 architecture rtl of acell_spi_rw is
 
+-- declare enumerated type for state machine
+type state_type is (STANDBY, MEAS, ID_AD, ID_1D, DATA_X, DATA_Y, DATA_Z);
+signal curr_state, next_state : state_type;
+
+
 begin
+  
+p_FSM : process(curr_state)
+
+
+end process p_FSM;
+
+
+
+-- clk process
+--   if new
+--      dout_Reg <= new
+--  elsif shifting
+--     dout_reg <= dout_reg(7 downto 1)
+--     dout <= dout_reg(0)
 
   
-
+ -- clock divider for 1 MHz clock
+ 
+ 
 
 
 
