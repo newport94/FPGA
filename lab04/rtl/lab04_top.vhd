@@ -80,6 +80,18 @@ begin
       i_char7 => x"0",
       o_AN    => AN,
       o_EN    => SEG7_CATH);
+<<<<<<< HEAD
+=======
+
+
+  -- simplify with generate statements
+  UP_BUTTON : entity work.debounce(rtl) 
+    Port map(
+      i_clk => CLK100MHZ,   -- 100 MHz clk
+      i_rst => w_rst,
+      i_pb  => BTNU,
+      o_db  => w_db_up);
+>>>>>>> 6f8e16ca468038a7b451b6e1276b83a423712c4c
       
       
       
