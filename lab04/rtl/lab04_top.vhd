@@ -40,10 +40,15 @@ architecture rtl of lab04_top is
   signal w_db_up, w_db_left, w_db_right, w_db_down : std_logic;
   signal w_rst : std_logic;
   signal w_x_index, w_y_index : std_logic_vector(7 downto 0);
+  signal w_pb_array, w_db_array : std_logic_vector(3 downto 0);
 
 begin
-
-  w_rst <= SW(0);
+  w_rst       <= SW(0);
+  w_pb_array  <= (BTNU, BTNL, BTNR, BTND);
+  w_db_up     <= w_db_array(0);
+  w_db_left   <= w_db_array(1);
+  w_db_right  <= w_db_array(2);
+  w_db_down   <= w_db_array(3);  
 
   VGA : entity work.vga_controller(rtl)
     Port map(
@@ -75,33 +80,48 @@ begin
       i_char7 => x"0",
       o_AN    => AN,
       o_EN    => SEG7_CATH);
-
-  UP_BUTTON : entity work.debounce(rtl) 
-    Port map(
-      i_clk => CLK100MHZ,   -- 100 MHz clk
-      i_rst => w_rst,
-      i_pb  => BTNU,
-      o_db  => w_db_up);
       
-  LEFT_BUTTON : entity work.debounce(rtl) 
-    Port map(
-      i_clk => CLK100MHZ,   -- 100 MHz clk
-      i_rst => w_rst,
-      i_pb  => BTNL,
-      o_db  => w_db_left);
+      
+      
+      
+      
+      
+  GEN_PUSH_BUTTONS : for ii in 0 to 3 generate
+    recognizers : entity work.debounce(rtl)
+      Port map(
+      i_clk => CLK100MHZ,   
+      i_rst => w_rst,        
+      i_pb  => w_pb_array(ii),        
+      o_db  => w_db_array(ii));
+  end generate GEN_PUSH_BUTTONS;
+        
+        
+  -- UP_BUTTON : entity work.debounce(rtl) 
+    -- Port map(
+      -- i_clk => CLK100MHZ,   -- 100 MHz clk
+      -- i_rst => w_rst,
+      -- i_pb  => BTNU,
+      -- o_db  => w_db_up);
+      
+  -- LEFT_BUTTON : entity work.debounce(rtl) 
+    -- Port map(
+      -- i_clk => CLK100MHZ,   -- 100 MHz clk
+      -- i_rst => w_rst,
+      -- i_pb  => BTNL,
+      -- o_db  => w_db_left);
 
-  RIGHT_BUTTON : entity work.debounce(rtl) 
-    Port map(
-      i_clk => CLK100MHZ,   -- 100 MHz clk
-      i_rst => w_rst,
-      i_pb  => BTNR,
-      o_db  => w_db_right);
+  -- RIGHT_BUTTON : entity work.debounce(rtl) 
+    -- Port map(
+      -- i_clk => CLK100MHZ,   -- 100 MHz clk
+      -- i_rst => w_rst,
+      -- i_pb  => BTNR,
+      -- o_db  => w_db_right);
 
-  DOWN_BUTTON : entity work.debounce(rtl) 
-    Port map(
-      i_clk => CLK100MHZ,   -- 100 MHz clk
-      i_rst => w_rst,
-      i_pb  => BTND,
-      o_db  => w_db_down);
+  -- DOWN_BUTTON : entity work.debounce(rtl) 
+    -- Port map(
+      -- i_clk => CLK100MHZ,   -- 100 MHz clk
+      -- i_rst => w_rst,
+      -- i_pb  => BTND,
+      -- o_db  => w_db_down);
     
  end architecture rtl;

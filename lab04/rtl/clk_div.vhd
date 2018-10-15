@@ -16,7 +16,8 @@ use work.all;
 
 entity clk_div is 
   Generic(
-    g_max_cnt   : integer := 1000000);  -- default to 100 MHZ/100 = 1 MHz
+    g_max_cnt   : integer := 50;  -- count for half a period 
+    g_max_width : integer := 6);  -- default to 100 MHZ/100 = 1 MHz = 1,000,000 Hz = 1000 ns period = 1 us
   Port(
     i_clk       : in     STD_LOGIC;   -- 100 MHz clock
     i_reset     : in     STD_LOGIC;   -- asynchronous reset
@@ -25,11 +26,11 @@ end clk_div;
 
 architecture rtl of clk_div is 
   signal w_clk_temp      : std_logic;
-  signal cntr, w_max_cnt : unsigned (26 downto 0);  
+  signal cntr, w_max_cnt : unsigned ((g_max_width - 1) downto 0);  
 
 begin
 
-  w_max_cnt <= to_unsigned(g_max_cnt, cntr'length);
+  w_max_cnt <= to_unsigned(g_max_cnt, g_max_width);
 
 
   p_clk_div:  process(i_clk, i_reset)
@@ -38,7 +39,7 @@ begin
       cntr       <= (others => '0');
       w_clk_temp <= '0';
     elsif (rising_edge(i_clk)) then 
-      if (cntr = w_max_cnt) then 
+      if (cntr = (w_max_cnt - 1)) then 
         cntr       <= (others => '0');
         w_clk_temp <= not w_clk_temp;
       else

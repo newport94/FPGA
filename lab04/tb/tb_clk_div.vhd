@@ -31,7 +31,7 @@ begin
       
   rst <= '0', '1' after 10 ns, '0' after 30 ns;
 
-  p_clk_gen : process
+  p_clk_100MHz : process -- 100 MHz = 10 ns period
   begin
     clk <= '1';
     wait for 5 ns;
