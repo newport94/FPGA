@@ -31,14 +31,14 @@ end entity accel_spi_rw;
 
 architecture rtl of accel_spi_rw is
 
-type top_state_type is (standby, new_command, shift_out, reg_data);
+type top_state_type is (standby, new_command, load_out, shift_out, reg_data);
 signal curr_state, next_state : top_state_type;
 
 type cmd_state_type is (standby, meas_mode, id_ad, id_1d, xdata, ydata, zdata);
 signal curr_cmd, next_cmd : cmd_state_type;
 
 signal w_new_cmd, w_write, w_sipo_en, d_SCLK, w_MOSI, w_vld_accel : std_logic;
-signal w_spi_done, q_SCLK, w_spi_cntr_en, w_sclk_det: std_logic;
+signal w_spi_done, q_SCLK, w_sclk_det: std_logic;
 
 signal w_piso_load : std_logic_vector(1 downto 0);
 
@@ -104,9 +104,6 @@ begin
   end process;
 
       
-  
-  
-  
   -- SCLK rising edge detect
   w_sclk_det  <= d_SCLK AND NOT q_SCLK;    
   
@@ -114,6 +111,8 @@ begin
   begin  
     if (i_rst = '1') then
       q_spi_cntr <= (others => '0');
+      q_SCLK     <= '0';
+      
     elsif(rising_edge(i_clk)) then
       q_SCLK <= d_SCLK;
         if (w_cntr_clr = '1') then
@@ -166,7 +165,7 @@ begin
   w_new_cmd   <= '1'  when (curr_state = new_command) else '0';  
   
   with curr_state select
-    w_piso_load <= "01" when new_command,
+    w_piso_load <= "01" when load_out,
                    "10" when shift_out,
                    "00" when others;  
                 
@@ -184,6 +183,7 @@ begin
   
   FSM_top_logic : process(curr_state, i_mode, w_write, w_spi_done)
   begin 
+    
     next_state <= curr_state;  --default to "stay at current state"
     case curr_state is 
       when standby =>
@@ -192,6 +192,9 @@ begin
         end if;
         
       when new_command =>
+        next_state <= load_out;
+        
+      when load_out =>
         next_state <= shift_out;
       
       when shift_out =>
@@ -204,9 +207,12 @@ begin
         end if;
         
       when reg_data =>
-      if (w_spi_done = '1') then
-        next_state <= new_command;
-      end if;      
+        if (w_spi_done = '1') then
+          next_state <= new_command;
+        end if;      
+          
+        when others => 
+          next_state <= standby;
     end case;  
   end process FSM_top_logic;
   
@@ -216,8 +222,8 @@ begin
   w_message <= (w_cmd & w_addr & w_data) when (curr_cmd =  meas_mode) else (w_cmd & w_addr & x"00");  
   
   w_write <= '1'   when (curr_cmd =  meas_mode) else '0';
-  w_cmd   <= x"0a" when (curr_cmd =  meas_mode) else x"0b";  -- write = 0x0A, read = 0x0B
-  w_data  <= x"02" when (curr_cmd = meas_mode)  else x"00";
+  w_cmd   <= x"0a" when (curr_cmd =  meas_mode OR curr_cmd = standby) else x"0b";  -- write = 0x0A, read = 0x0B
+  w_data  <= x"02" when (curr_cmd = meas_mode OR curr_cmd = standby)  else x"00";
   with curr_cmd select
     w_addr <= 
       x"2D" when meas_mode, -- set to meas mode
@@ -274,8 +280,10 @@ begin
   
   FSM_cmd_logic : process(curr_cmd, w_new_cmd)
   begin
+    
     next_cmd <= curr_cmd;
     case curr_cmd is
+      
       when standby =>
         if (i_mode = '1' AND w_new_cmd = '1') then
           next_cmd <= meas_mode;
@@ -309,7 +317,9 @@ begin
         if (w_new_cmd = '1') then
           next_cmd <= xdata;
         end if;   
-        
+          
+      when others => 
+        next_cmd <= standby;
     end case;
   end process FSM_cmd_logic;
   ------------------------------------------------------------------------------------------------
@@ -320,6 +330,7 @@ begin
       g_width => 24)
     Port map(
       i_clk   => i_clk,
+      i_en    => w_sclk_det,
       i_rst   => i_rst,
       i_din   => w_message,
       i_mode  => w_piso_load,
@@ -330,13 +341,13 @@ begin
       g_reg_width  => 8,
       g_cntr_width => 4)
     Port map(
-      i_clk   => i_clk,        --: in    STD_LOGIC;
-      i_rst   => i_rst,        --: in    STD_LOGIC;
-      i_sin   => i_MISO,       --: in    STD_LOGIC;
-      i_en    => w_sipo_en,    --: in    STD_LOGIC;
-      o_pout  => d_data_accel, --:   out STD_LOGIC_VECTOR((g_reg_width - 1) downto 0);
-      o_vld   => w_vld_accel); --:   out STD_LOGIC); 
-    
+      i_clk      => i_clk,       
+      i_rst      => i_rst,       
+      i_en_1MHz  => w_sclk_det,      
+      i_sin      => i_MISO,
+      i_reg_data => w_sipo_en,
+      o_pout     => d_data_accel,
+      o_vld      => w_vld_accel);
 
   U_1MHz_SCLK : entity work.clk_div(rtl) 
     Generic map(

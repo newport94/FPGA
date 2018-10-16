@@ -18,6 +18,7 @@ entity piso is
     g_width : integer := 24);
   Port(
     i_clk   : in    STD_LOGIC;
+    i_en    : in    STD_LOGIC;
     i_rst   : in    STD_LOGIC;
     i_din   : in    STD_LOGIC_VECTOR ((g_width - 1) downto 0);
     i_mode  : in    STD_LOGIC_VECTOR(1 downto 0);
@@ -36,6 +37,7 @@ begin
       o_sdout <= '0';
       q_sr    <= (others => '0');
     elsif (rising_edge(i_clk)) then
+
       case i_mode is
         when "00" =>    -- no op
           null;
@@ -44,12 +46,13 @@ begin
           q_sr <= i_din;
           
         when "10" =>    -- shift left for msb out
-          o_sdout <= q_sr(g_width - 1);      
-          q_sr((g_width - 1) downto 1) <= q_sr((g_width - 2) downto 0);  
+          if (i_en = '1') then          
+            o_sdout <= q_sr(g_width - 1);      
+            q_sr((g_width - 1) downto 1) <= q_sr((g_width - 2) downto 0);  
+          end if;
           
         when others =>  -- no op
           null;
-          
       end case;
     end if;
   end process p_sr;

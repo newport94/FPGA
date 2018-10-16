@@ -18,12 +18,13 @@ entity sipo is
     g_reg_width  : integer := 8;
     g_cntr_width : integer := 4);
   Port(
-    i_clk   : in    STD_LOGIC;
-    i_rst   : in    STD_LOGIC;
-    i_sin   : in    STD_LOGIC;
-    i_en    : in    STD_LOGIC;
-    o_pout  :   out STD_LOGIC_VECTOR((g_reg_width - 1) downto 0);
-    o_vld   :   out STD_LOGIC);
+    i_clk      : in    STD_LOGIC;
+    i_rst      : in    STD_LOGIC;
+    i_en_1MHz  : in    STD_LOGIC;
+    i_sin      : in    STD_LOGIC;
+    i_reg_data : in    STD_LOGIC;
+    o_pout     :   out STD_LOGIC_VECTOR((g_reg_width - 1) downto 0);
+    o_vld      :   out STD_LOGIC);
 end entity sipo;
 
 architecture rtl of sipo is
@@ -44,15 +45,17 @@ begin
       o_vld  <= '0';
       
     elsif (rising_edge(i_clk)) then
-      if (i_en = '1') then
-        if (q_cntr = k_cntr_max) then
-          q_cntr <= (others => '0');
-          o_pout <= q_temp;
-          o_vld  <= '1';
-        else
-          q_cntr <= q_cntr + 1;
-          q_temp((g_reg_width - 1) downto 1) <= q_temp((g_reg_width - 2) downto 0);
-          q_temp(0) <= i_sin;
+      if (i_reg_data ='1') then
+        if (i_en_1MHz = '1') then
+          if (q_cntr = k_cntr_max) then
+            q_cntr <= (others => '0');
+            o_pout <= q_temp;
+            o_vld  <= '1';
+          else
+            q_cntr <= q_cntr + 1;
+            q_temp((g_reg_width - 1) downto 1) <= q_temp((g_reg_width - 2) downto 0);
+            q_temp(0) <= i_sin;
+          end if;
         end if;
       end if;
     end if;
