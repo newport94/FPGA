@@ -65,7 +65,7 @@ begin
   o_ID_AD  <= q_id_ad;
   o_ID_1D  <= q_id_1d;
   o_MOSI   <= w_MOSI;  
-  o_CS     <= '1' when (curr_state = standby) else '0';  
+  o_CS     <= '0'; --'1' when (curr_state = standby) else '0';  
   o_SCLK   <= d_SCLK;
   
   

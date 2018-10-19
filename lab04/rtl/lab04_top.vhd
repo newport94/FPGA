@@ -72,8 +72,8 @@ begin
         when "00" =>
           w_char4 <= w_data_ad(3 downto 0);
           w_char5 <= w_data_ad(7 downto 4);
-          w_char6 <= w_data_id(3 downto 0);
-          w_char7 <= w_data_id(7 downto 4);
+          w_char6 <= w_data_1d(3 downto 0);
+          w_char7 <= w_data_1d(7 downto 4);
         when "01" =>
           w_char4 <= w_data_x(3 downto 0);
           w_char5 <= w_data_x(7 downto 4);
