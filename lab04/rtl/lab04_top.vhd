@@ -38,9 +38,15 @@ end entity lab04_top;
 architecture rtl of lab04_top is
  
   signal w_db_up, w_db_left, w_db_right, w_db_down : std_logic;
-  signal w_rst : std_logic;
+  signal w_rst, w_mode : std_logic;
   signal w_x_index, w_y_index : std_logic_vector(7 downto 0);
   signal w_pb_array, w_db_array : std_logic_vector(3 downto 0);
+  signal w_data_ad, w_data_1d, w_data_x, w_data_y, w_data_z : std_logic_vector(7 downto 0);
+  signal w_disp : std_logic_vector(1 downto 0);
+  signal w_char4, w_char5, w_char6, w_char7  : std_logic_vector (3 downto 0);
+  
+  
+  
 
 begin
   w_rst       <= SW(0);
@@ -48,7 +54,77 @@ begin
   w_db_up     <= w_db_array(0);
   w_db_left   <= w_db_array(1);
   w_db_right  <= w_db_array(2);
-  w_db_down   <= w_db_array(3);  
+  w_db_down   <= w_db_array(3);
+  w_mode      <= SW(1);
+  w_disp      <= SW(4 downto 3); -- controls digits 4 - 7
+                                    -- '00' --> display 1D in digits 7-6 and AD in 5-4
+                                    -- '01' --> display x data in digits 5-4, zeros in 7-6
+                                    -- '10' --> display y data in digits 5-4, zeros in 7-6
+                                    -- '11' --> dispaly z data in digits 5-4, zeros in 7-6
+                                    
+                                    
+  -- select char signals with w_disp
+  
+  C_char_sel : process(w_mode, w_disp)
+  begin
+    if (w_mode = '1') then
+      case w_disp is
+        when "00" =>
+          w_char4 <= w_data_ad(3 downto 0);
+          w_char5 <= w_data_ad(7 downto 4);
+          w_char6 <= w_data_id(3 downto 0);
+          w_char7 <= w_data_id(7 downto 4);
+        when "01" =>
+          w_char4 <= w_data_x(3 downto 0);
+          w_char5 <= w_data_x(7 downto 4);
+          w_char6 <= x"0";
+          w_char7 <= x"0";
+        when "10" =>
+          w_char4 <= w_data_y(3 downto 0);
+          w_char5 <= w_data_y(7 downto 4);
+          w_char6 <= x"0";
+          w_char7 <= x"0";
+        when "11" =>
+          w_char4 <= w_data_z(3 downto 0);
+          w_char5 <= w_data_z(7 downto 4);
+          w_char6 <= x"0";
+          w_char7 <= x"0";  
+        when others =>
+          w_char4 <= x"0";
+          w_char5 <= x"0";
+          w_char6 <= x"0";
+          w_char7 <= x"0"; 
+      end case;              
+    else
+      w_char4 <= x"0";
+      w_char5 <= x"0";
+      w_char6 <= x"0";
+      w_char7 <= x"0";    
+    end if;
+  
+  end process C_char_sel;
+
+  
+  
+  
+  ACCEL_SPI : entity work.accel_spi_rw(rtl)
+    Port map(
+      i_clk    => CLK100MHZ,
+      i_mode   => w_mode,
+      i_rst    => w_rst,
+      o_DATA_X => w_data_x,
+      o_DATA_Y => w_data_y,
+      o_DATA_Z => w_data_z,
+      o_ID_AD  => w_data_ad,
+      o_ID_1D  => w_data_1d,
+      o_MOSI   => ACL_MOSI,
+      o_CS     => ACL_CSN,
+      o_SCLK   => ACL_SCLK,
+      i_MISO   => ACL_MISO);
+    
+    
+    
+    
 
   VGA : entity work.vga_controller(rtl)
     Port map(
@@ -74,10 +150,10 @@ begin
       i_char1 => w_y_index(7 downto 4),
       i_char2 => w_x_index(3 downto 0),
       i_char3 => w_x_index(7 downto 4),
-      i_char4 => x"0",
-      i_char5 => x"0",
-      i_char6 => x"0",
-      i_char7 => x"0",
+      i_char4 => w_char4,
+      i_char5 => w_char5,
+      i_char6 => w_char6,
+      i_char7 => w_char7,
       o_AN    => AN,
       o_EN    => SEG7_CATH);
 
