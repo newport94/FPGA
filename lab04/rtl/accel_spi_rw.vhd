@@ -37,7 +37,7 @@ signal curr_state, next_state : top_state_type;
 type cmd_state_type is (standby, meas_mode, id_ad, id_1d, xdata, ydata, zdata);
 signal curr_cmd, next_cmd : cmd_state_type;
 
-signal w_new_cmd, w_write, w_reg_data, d_SCLK, w_MOSI, w_vld_accel, q_reg_data, w_sipo_start: std_logic;
+signal w_new_cmd, w_write, w_reg_data, d_SCLK, w_MOSI, w_vld_accel, w_sipo_start: std_logic;
 signal w_spi_rw_done, q_SCLK, w_sclk_det: std_logic;
 
 signal w_piso_load : std_logic_vector(1 downto 0);
@@ -53,8 +53,9 @@ constant k_r2_max : unsigned(3 downto 0) := to_unsigned(10,4);
 
 signal q_id_1d, q_id_ad, q_xdata, q_ydata, q_zdata, d_data_accel : std_logic_vector(7 downto 0);
 
-signal w_cntr_clr, w_cntr_en : std_logic;
+signal w_cntr_clr, w_cntr_en, w_cn_flag : std_logic;
 
+signal q_sclk_cnt : unsigned(1 downto 0);
 
 begin
 
@@ -65,9 +66,26 @@ begin
   o_ID_AD  <= q_id_ad;
   o_ID_1D  <= q_id_1d;
   o_MOSI   <= w_MOSI;  
-  o_CS     <= '0'; --'1' when (curr_state = standby) else '0';  
-  o_SCLK   <= d_SCLK;
+  o_CS     <= '0' when (w_cn_flag = '1') else '1';  
+  o_SCLK   <= q_SCLK;
   
+  
+  w_cn_flag <= '1' when (q_sclk_cnt = 2) else '0';
+  
+  
+  
+  S_CN_Low : process(i_rst, i_clk)
+  begin
+    if (i_rst = '1') then
+      q_sclk_cnt <= (others => '0');
+    elsif (rising_edge(i_clk)) then
+      if (w_sclk_det = '1' AND w_cn_flag = '0' ) then
+        q_sclk_cnt <= q_sclk_cnt + 1;
+      end if;
+    end if;
+  end process S_CN_Low;
+  
+
   
   C_spi_cntr : process(q_spi_cntr, w_sclk_det, curr_state, w_write)
   begin
@@ -123,11 +141,9 @@ begin
     if (i_rst = '1') then
       q_spi_cntr   <= (others => '0');
       q_SCLK       <= '0';
-      q_reg_data <= '0';
       
     elsif(rising_edge(i_clk)) then
       q_SCLK     <= d_SCLK;
-      -- q_reg_data <= d_reg_data;
         if (w_cntr_clr = '1') then
           q_spi_cntr <= (others => '0');
         elsif (w_cntr_en = '1') then
@@ -135,44 +151,9 @@ begin
         end if;
     end if;
   end process S_spi_cntr;
-  
-  -- S_spi_cntr : process(i_clk, i_rst)
-  -- begin
-    -- if (i_rst = '1') then
-      -- q_spi_cntr <= (others => '0');
-      -- -- w_spi_rw_done <= '0';
-    -- elsif (rising_edge(i_clk)) then
-      -- if (curr_state = shift_out) then
-      
-        -- if (w_sclk_det = '1') then
-        
-          -- if (q_spi_cntr = k_w_max) then
-            -- q_spi_cntr <= (others => '0');
-            -- -- w_spi_rw_done <= '1';
-          -- else
-            -- q_spi_cntr <= q_spi_cntr + 1;
-            -- -- w_spi_rw_done <= '0';
-          -- end if;
-          
-        -- end if
-        
-      -- elsif (curr_state = reg_data) then
-        
-        -- if (w_sclk_det = '1') then
-      
-          -- if (q_spi_cntr = k_r1_max) then
-            -- q_spi_cntr <= (others => '0');
-            -- -- w_spi_rw_done <= '1';
-          -- else
-            -- q_spi_cntr <= q_spi_cntr + 1;
-            -- -- w_spi_rw_done <= '0';
-          -- end if;      
-        
-        -- end if;
-      -- end if
-    -- end if;   
-  -- end process p_spi_cntr;  
-  
+   
+   
+
   ----------------------------- top level state machine---------------------------------------
   -- top state machine outputs
   w_new_cmd   <= '1'  when (curr_state = new_command) else '0';  
@@ -183,8 +164,6 @@ begin
                    "00" when others;  
                 
   w_reg_data   <= '1' when (curr_state = reg_data) else '0';
-  -- w_sipo_start <= d_reg_data AND NOT q_reg_data;
- 
 
   S_top_state_reg : process(i_clk, i_rst)
   begin
@@ -195,18 +174,18 @@ begin
     end if;
   end process S_top_state_reg;
   
-  FSM_top_logic : process(curr_state, i_mode, w_write, w_spi_rw_done)
+  FSM_top_logic : process(curr_state, i_mode, w_write, w_spi_rw_done, w_sclk_det)
   begin 
     
     next_state <= curr_state;  --default to "stay at current state"
     case curr_state is 
       when standby =>
-        if (i_mode = '1') then
+        if (i_mode = '1' AND w_sclk_det = '1') then
           next_state <= new_command;
         end if;
         
       when new_command =>
-        next_state <= load_out;
+          next_state <= load_out;
         
       when load_out =>
         next_state <= shift_out;

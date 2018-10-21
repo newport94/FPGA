@@ -30,7 +30,7 @@ end entity sipo;
 architecture rtl of sipo is
 
 signal q_cntr : unsigned((g_cntr_width - 1) downto 0);
-constant k_cntr_max : unsigned((g_cntr_width - 1) downto 0) := to_unsigned((g_reg_width + 1), g_cntr_width);
+constant k_cntr_max : unsigned((g_cntr_width - 1) downto 0) := to_unsigned((g_reg_width), g_cntr_width);
 
 signal q_temp : std_logic_vector((g_reg_width - 1) downto 0);
 
