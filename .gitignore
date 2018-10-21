@@ -22,5 +22,5 @@
 *.runs/
 *lab0_seg_7.vhd
 *.prm
-*/work/
+/work/
 
