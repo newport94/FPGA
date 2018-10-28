@@ -3,6 +3,15 @@
 ;	Adds '1' for each press of BTNR
 ;	Subtracts '1' for each press of BTNL
 
+
+CONSTANT switches, 02
+CONSTANT pb, 03
+CONSTANT s7_low, 04
+CONSTANT s7_hi, 05
+CONSTANT leds, 06
+CONSTANT mstimer_low, 07
+CONSTANT mstimer_hi, 08
+
 ; Extra ASM to fix issue with Vivado (see documentation), Skips Address 03
 	JUMP cold_start
 	JUMP cold_start
@@ -13,77 +22,211 @@ cold_start:
 
 ; SLIDERS are assigned to PORT 02
 ; PUSHBTNs are assigned to PORT 03
-; PUSHBTN(0) is used to add 1
-; PUSHBTN(1) is used to subtract 1
-; PUSHBTN(3) is used to reset design
+; PUSHBTN(0) = BTNR is used to initiate selected operation
+; PUSHBTN(1) = BTNL is used to reset design
+; (3=>BTND, 2=>BTNU, 1=>BTNL, 0=>BTNR);
 
 ; NOTE: (s# usage):
 ; s0,s1,s2 - Used in delay subroutines
-; s3	-	Stores global register for value to display
+; s3	-	Stores ALU result lower 2 nibbles
+; s4  - Stores ALU result upper 2 nibbles
 ; s5	-	Stores the debounced push btn signal
 ; s6	-	Debounced register
+; s7  - stores the dip switches
+; sA  - stores nibble slice from switches
+; sB  - counter for shift left 
+; sC  - stores multiplication 2^0
+; sD  - stores multiplication 2^1
+; sE  - stores multiplication 2^2
+; sF  - stores multiplication 2^3
 
-	reset: 	LOAD s3, 00								;reset ALU setpoint to 0
-			OUTPUT s3, 04							;display reset values
-			LOAD s5, 00
-			LOAD s6, 00
+
+	reset: 	LOAD s0, 00
+      LOAD s1, 00
+      LOAD s2, 00
+      LOAD s3, 00								;reset ALU setpoint to 0
+      LOAD s4, 00
+      LOAD s5, 00
+      LOAD s6, 00
+      LOAD s7, 00
+			LOAD sA, 00
+			LOAD sB, 00      
+			LOAD sC, 00      
+      LOAD sD, 00  
+      LOAD sE, 00  
+      LOAD sF, 00  
+			OUTPUT s3, s7_low
+      OUTPUT s4, s7_hi
 
 			;; wait for btn 3 to be depressed to exit reset state
-			INPUT s5, 03
-			TEST s5, 08
+			INPUT s5, pb ;03
+			TEST s5, 08     ; logical AND, stored in temp.  Z = 1 if temp all zero, C = 1 if temp odd numb bits*
 			JUMP NZ, reset	;stay in reset until 'depressed'
 		
 	; Main Processing Loop
 	; Runs debouncer on input push btns
 	; Checks current state of push btns to perform operation
-	mainlp:	INPUT s5, 03	; store push buttons
-			CALL del10ms	; delay 10ms
-			INPUT s6, 03	; store push buttons again
+  
+	mainlp:	INPUT s5, pb	; store push buttons
+			CALL del10ms	; delay 10ms   ; unconditional call
+			INPUT s6, pb	; store push buttons again
 			AND s5, s6		; AND push buttons to only keep signals high if held for 10ms
-			
-			; Determine if Btn0 was pressed
-			TEST s5, 01
-			CALL NZ, opadd	; Start Addition
-			
-			; Determine if Btn1 was pressed
+      
+      ; Determine if Btn1 = BUTL was pressed
 			TEST s5, 02
-			CALL NZ, opsub	; Start Subtraction
+			JUMP NZ, reset	
 			
-			; Determine if Btn3 was pressed
-			TEST s5, 08
-			JUMP NZ, reset	; Start Subtraction
+			; Determine if Btn0 = BUTR was pressed
+			TEST s5, 01
+			CALL NZ, opinit				
 			
-			; Update Displays
-			OUTPUT s3, 04	; Update Display with ALU REG
-			OUTPUT s4, 05
-
 			JUMP mainlp
-	
-	;	ADD OPERATION
-	;	Handles Carry
-	opadd:	ADD 	s3, 01 ; ADD 1 to register
-	
-	addopend:	INPUT s5, 03
+      
+      
+  ; OPERATION INITIATE SUBROUTINE
+  opinit:  INPUT s7, switches
+        TEST s7, 10; 16d
+        JUMP NZ, opadd
+        
+        TEST s7, 20 ; 32d
+        JUMP NZ, opsub
+        
+        TEST s7, 40 ;64 d
+        JUMP NZ, opls
+        
+        TEST s7, 80 ;128d
+        JUMP NZ, opmult
+        
+      ; Update Displays
+	updisp: OUTPUT s3, s7_low
+        OUTPUT s4, s7_hi
+        RETURN
+
+
+  ; ADDITION SUBROUTINE
+  opadd: CALL slice
+        ADD s3, sA
+        ADDCY s4, 00        
+        
+	addopend:	INPUT s5, pb
 				TEST s5, 01			;check btn0 and only exit this function if button isn't pressed
 				JUMP NZ, addopend	;stay in this routine until btn is depressed
-				RETURN
+				JUMP updisp 
+        
+  ; SUBTRACTION SUBROUTINE
+  opsub: CALL slice
+        SUB s3, sA
+        SUBCY s4, 00
+        
+	subopend:	INPUT s5, pb
+				TEST s5, 01			    ;check btn0 and only exit this function if button isn't pressed
+				JUMP NZ, subopend  	;stay in this routine until btn is depressed
+        JUMP updisp      
+    
+  ; LEFT SHIFT SUBROUTINE  
+  opls: CALL slice
+        LOAD sB, 00   ; reset counter
+  loopls: COMPARE sB, sA
+        JUMP Z, lsopend
+        SL0 s3
+        SLA s4
+        ADD sB, 01
+        JUMP loopls
+        
+	lsopend:	INPUT s5, pb
+				TEST s5, 01			    ;check btn0 and only exit this function if button isn't pressed
+				JUMP NZ, lsopend  	;stay in this routine until btn is depressed
+        JUMP updisp     
+
+
+  ; MULTIPLICATION SUBROUTINE
+  opmult: CALL slice
+  	  LOAD sC, 00      
+      LOAD sD, 00  
+      LOAD sE, 00  
+      LOAD sF, 00
+      
+      TEST sA, 01
+      CALL NZ, pow0
+      
+      TEST sA, 02
+      CALL NZ, pow1
+      
+      TEST sA, 04
+      CALL NZ, pow2
+      
+      TEST sA, 08
+      CALL NZ, pow3
+      
+      LOAD s3, sE
+      LOAD s4, sF
+       
+      
+	multopend:	INPUT s5, pb
+				TEST s5, 01			    ;check btn0 and only exit this function if button isn't pressed
+				JUMP NZ, multopend  	;stay in this routine until btn is depressed
+        JUMP updisp     
+
+
+  pow0: LOAD sE, s3
+        LOAD sF, s4
+        RETURN 
+      
+  pow1: LOAD sC, s3
+        LOAD sD, s4
+        SL0 sC
+        SLA sD
+        ADD sE, sC
+        ADDCY sF, sD
+        RETURN
+        
+  pow2: LOAD sC, s3
+        LOAD sD, s4
+        SL0 sC
+        SLA sD
+        SL0 sC
+        SLA sD        
+        ADD sE, sC
+        ADDCY sF, sD
+        RETURN
+        
+        
+        
+  pow3: LOAD sC, s3
+        LOAD sD, s4
+        SL0 sC
+        SLA sD
+        SL0 sC
+        SLA sD     
+        SL0 sC
+        SLA sD           
+        ADD sE, sC
+        ADDCY sF, sD
+        RETURN
+        
+        
+        
+        
+        
 	
-	;	SUBTRACT OPERATION
-	;	Basic Subtract
-	opsub:	SUB s3, 01		; subtract 1 from S3
-	
-	subend:	INPUT s5, 03
-			TEST s5, 02			;check btn1 and only exit this function if button isn't pressed
-			JUMP NZ, subend	;stay in this routine until btn is depressed
-			RETURN
-	
-	
+  
+  ; SLICE NIBBLE SUBROUTINE
+  slice: LOAD sA, s7
+      SL0 sA
+      SL0 sA
+      SL0 sA
+      SL0 sA
+      SR0 sA
+      SR0 sA
+      SR0 sA
+      SR0 sA
+      RETURN
 
 	;;HELPER FUNCTIONS FROM TESTPROG (used for delay in top level, added a 10ms delay)
-	delms:	INPUT s0,07
-	delmslp:	INPUT s1,07
-			COMPARE s0,s1
-			JUMP Z, delmslp
+	delms:	INPUT s0,mstimer_low
+	delmslp:	INPUT s1,mstimer_low
+			COMPARE s0,s1         ; sX - sY = temp, C = 1 if sY > sX, Z = 1 if sX = sY
+			JUMP Z, delmslp       ; loop if equal
 			RETURN
 			
 	del10ms:	LOAD s2, F5	;load 245
