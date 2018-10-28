@@ -35,10 +35,10 @@ cold_start:
 ; s7  - stores the dip switches
 ; sA  - stores nibble slice from switches
 ; sB  - counter for shift left 
-; sC  - stores multiplication 2^0
-; sD  - stores multiplication 2^1
-; sE  - stores multiplication 2^2
-; sF  - stores multiplication 2^3
+; sC  - temporary multiplication register lsb
+; sD  - temporary multiplication register msb
+; sE  - running multiplication result lsb
+; sF  - running multiplication result msb
 
 
 	reset: 	LOAD s0, 00
@@ -190,8 +190,6 @@ cold_start:
         ADDCY sF, sD
         RETURN
         
-        
-        
   pow3: LOAD sC, s3
         LOAD sD, s4
         SL0 sC
@@ -204,12 +202,6 @@ cold_start:
         ADDCY sF, sD
         RETURN
         
-        
-        
-        
-        
-	
-  
   ; SLICE NIBBLE SUBROUTINE
   slice: LOAD sA, s7
       SL0 sA
