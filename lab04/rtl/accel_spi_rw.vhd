@@ -49,7 +49,7 @@ signal w_message : std_logic_vector(23 downto 0);
 signal  q_spi_cntr  : unsigned(4 downto 0);
 constant k_w_max : unsigned(4 downto 0) := to_unsigned(23,5);
 constant k_r1_max : unsigned(3 downto 0) := to_unsigned(15,4);
-constant k_r2_max : unsigned(3 downto 0) := to_unsigned(10,4);
+constant k_r2_max : unsigned(2 downto 0) := to_unsigned(7,3);
 
 signal q_id_1d, q_id_ad, q_xdata, q_ydata, q_zdata, d_data_accel : std_logic_vector(7 downto 0);
 
@@ -330,9 +330,9 @@ begin
       o_sdout => w_MOSI);
       
   U_SIPO : entity work.sipo(rtl) 
-    Generic map(
-      g_reg_width  => 8,
-      g_cntr_width => 4)
+    -- Generic map(
+      -- g_reg_width  => 8,
+      -- g_cntr_width => 4)
     Port map(
       i_clk      => i_clk,       
       i_rst      => i_rst,       

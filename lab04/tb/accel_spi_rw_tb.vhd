@@ -77,7 +77,7 @@ begin
 	end process;
 	
 	--ACL Model
-	ACL_DUMMY : entity work.acl_model(Behavioral) port map (
+	ACL_DUMMY : entity work.acl_model_v2(Behavioral) port map (
 		rst => reset,
 		ACL_CSN => ACL_CSN, 
 		ACL_MOSI => ACL_MOSI,

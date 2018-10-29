@@ -34,7 +34,7 @@ constant k_cntr_max : unsigned((g_cntr_width - 1) downto 0) := to_unsigned((g_re
 
 signal q_temp : std_logic_vector((g_reg_width - 1) downto 0);
 
-signal w_vld, d_reg_data, q_reg_data, w_cntr_rst: std_logic;
+signal w_vld, d_reg_data, q_reg_data, w_cntr_rst, w_rd_fall: std_logic;
 
 begin
 
@@ -42,16 +42,14 @@ o_vld <= w_vld;
 
 d_reg_data <= i_reg_data;
 
-
+w_rd_fall  <= q_reg_data AND (NOT d_reg_data);
 w_cntr_rst <= d_reg_data AND (NOT q_reg_data);
 
-  C_reg_sdata : process(q_cntr, i_reg_data)
+  C_reg_sdata : process(q_cntr, w_rd_fall)
   begin
     if (q_cntr = k_cntr_max) then
-      if (i_reg_data = '1') then
+      if (w_rd_fall = '1') then
         w_vld  <= '1';
-      else
-        w_vld <= '0';
       end if;
     else
       w_vld  <= '0';
