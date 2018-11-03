@@ -6,7 +6,7 @@
 -- Module Name:  pulse_gen
 -- Project Name:  Lab06
 --
--- Description:  pulse generator entity with generics for any max count
+-- Description:  pulse generator entity for dds
 ----------------------------------------------------------------------------------
 
 library IEEE;
@@ -29,7 +29,7 @@ signal synchReset : std_logic;
 
 begin
 
-  synchReset <= '1' when cntr = i_max_val else '0';
+  synchReset <= '1' when cntr = unsigned(i_max_val) else '0';
   o_pulse    <= synchReset;
 
   process(i_clk,i_rst)

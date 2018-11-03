@@ -45,7 +45,7 @@ entity lab06_top is
     BTNC      : in    STD_LOGIC;                       -- overall reset
     SEG7_CATH :   out STD_LOGIC_VECTOR(7 downto 0);   -- seven segment controller
     AN        :   out STD_LOGIC_VECTOR(7 downto 0);
-    AUD_PW    :   out STD_LOGIC;                      -- audio pwm output
+    AUD_PWM   :   out STD_LOGIC;                      -- audio pwm output
     AUD_SD    :   out STD_LOGIC);                     -- audio output enable
 end entity lab06_top;
 
@@ -69,53 +69,92 @@ architecture rtl of lab06_top is
       i_max_val : in    STD_LOGIC_VECTOR(9 downto 0);
       o_pulse   :   out STD_LOGIC);
   end component;  
+  
+  component seg7_controller
+  Port ( i_clk   : in     STD_LOGIC;                     -- 100 MHz clock
+         i_rst   : in     STD_LOGIC;                     -- asynchronous reset
+         i_char0 : in     STD_LOGIC_VECTOR(3 downto 0);  -- the 8 hex characters to display
+         i_char1 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char2 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char3 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char4 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char5 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char6 : in     STD_LOGIC_VECTOR(3 downto 0);
+         i_char7 : in     STD_LOGIC_VECTOR(3 downto 0);
+         o_AN    :    out STD_LOGIC_VECTOR(7 downto 0);
+         o_EN    :    out STD_LOGIC_VECTOR(7 downto 0));  -- encoded character                 
+  end component;
+  
+  
+  component pwm_gen
+    Generic( 
+      pwm_resolution : integer);
+    Port(
+      clk_i        : in    STD_LOGIC;
+      rst_i        : in    STD_LOGIC;
+      duty_cycle_i : in    STD_LOGIC_VECTOR((pwm_resolution - 1) downto 0);
+      pwm_o        :   out STD_LOGIC    
+    );
+  end component;  
     
  constant THETA_MAX_K : unsigned(7 downto 0) := to_unsigned(255, 8);
     
- signal sw_freq_w, sw_vol_w : std_logic_vector(2 downto 0);
+ signal sw_freq_w, switch_vol_w : std_logic_vector(2 downto 0);
  signal max_cnt_w : unsigned(9 downto 0);
- signal phase_inc_w, theta_rst_w : std_logic;      
+ signal phase_inc_w, theta_rst_w, pwm_w : std_logic;      
  signal theta_q : unsigned(7 downto 0);
+ signal freq_disp_w, dds_in_w : std_logic_vector(7 downto 0);
  signal sin_w : std_logic_vector(15 downto 0);
- signal sin_vol_w : std_logic_vector(15 downto 0);
-
+ signal sin_vol_w, sin_ls_w : std_logic_vector(9 downto 0);
 
 begin
-
+  
+  -- assign outputs
   AUD_SD <= SW(15);
+  AUD_PWM <= pwm_w;
   
   sw_freq_w <= SW(2 downto 0);
-  sw_vol_w  <= SW(5 downto 3);
-  vol_slice_w <= vol_w(15 downto 6);  
+  switch_vol_w  <= SW(5 downto 3);
+  sin_ls_w <= (NOT sin_w(15)) & sin_w(14 downto 6);
 
   theta_rst_w <= '1' when (theta_q = THETA_MAX_K) else '0';
   
+  dds_in_w <= x"80" when (sw_freq_w = "000") else std_logic_vector(theta_q);
+  
   with sw_freq_w select
     max_cnt_w <=
-      to_unsigned(781, 10) when "001",
-      to_unsigned(391, 10) when "010",
-      to_unsigned(260, 10) when "011",
-      to_unsigned(195, 10) when "100",
-      to_unsigned(156, 10) when "101",
-      to_unsigned(130, 10) when "110",
-      to_unsigned(111, 10) when "111",
-      to_unsigned(0  , 10) when others; 
+      to_unsigned(781, 10) when "001",  -- 500 Hz
+      to_unsigned(391, 10) when "010",  -- 1000
+      to_unsigned(260, 10) when "011",  -- 1500
+      to_unsigned(195, 10) when "100",  -- 2000
+      to_unsigned(156, 10) when "101",  -- 2500
+      to_unsigned(130, 10) when "110",  -- 3000
+      to_unsigned(111, 10) when "111",  -- 3500
+      to_unsigned(0  , 10) when others; -- DC
+      
+  with sw_freq_w select
+    freq_disp_w <=
+      x"05" when "001",  -- 0500 Hz
+      x"10" when "010",  -- 1000
+      x"15" when "011",  -- 1500
+      x"20" when "100",  -- 2000
+      x"25" when "101",  -- 2500
+      x"30" when "110",  -- 3000
+      x"35" when "111",  -- 3500
+      x"00" when others; -- DC      
         
-   with sw_vol_w select
+   with switch_vol_w select
      sin_vol_w <=
-       shift_right(sin_w, 7) when "000",
-       shift_right(sin_w, 6) when "001",
-       shift_right(sin_w, 5) when "010",
-       shift_right(sin_w, 4) when "011",
-       shift_right(sin_w, 3) when "100",
-       shift_right(sin_w, 2) when "101",
-       shift_right(sin_w, 1) when "110",
-       sin_w                 when others;
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 7)) when "000",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 6)) when "001",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 5)) when "010",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 4)) when "011",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 3)) when "100",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 2)) when "101",
+       std_logic_vector(shift_right(unsigned(sin_ls_w), 1)) when "110",
+       sin_ls_w                 when others;
            
         
-        -- make sure to do invert bit thingy from assignment
-
-
   S_phase_acc : process(CLK100MHZ, BTNC)
   begin
     if (BTNC = '1') then
@@ -128,8 +167,35 @@ begin
       end if;
     end if;    
   end process S_phase_acc;
-
-
+  
+  
+  
+  U_PWM_GEN: pwm_gen
+    Generic map( 
+      pwm_resolution => 10)
+    Port map(
+      clk_i        => CLK100MHZ,
+      rst_i        => BTNC,
+      duty_cycle_i => sin_vol_w,
+      pwm_o        => pwm_w);   
+  
+   -- 7 seg display
+   -- display frequency in decimal on lower 4
+   -- volume level on upper 4 as (min) 0, 1, 2, ... 7 (max)
+  U_SEG7 : seg7_controller
+    Port map( 
+      i_clk   => CLK100MHZ,  
+      i_rst   => BTNC,  
+      i_char0 => x"0", 
+      i_char1 => x"0",
+      i_char2 => freq_disp_w(3 downto 0),
+      i_char3 => freq_disp_w(7 downto 4),
+      i_char4 => "0" & switch_vol_w,
+      i_char5 => x"0",
+      i_char6 => x"0",
+      i_char7 => x"0",
+      o_AN    => AN,
+      o_EN    => SEG7_CATH);                
 
    U_PHASE_INC : pulse_gen
     Port map(
@@ -143,10 +209,9 @@ begin
     PORT MAP (
       aclk => CLK100MHZ,
       s_axis_phase_tvalid => '1',
-      s_axis_phase_tdata => std_logic_vector(theta_q),
+      s_axis_phase_tdata => dds_in_w,
       m_axis_data_tvalid => open,
       m_axis_data_tdata => sin_w
     );
-
-
+    
 end architecture rtl;
