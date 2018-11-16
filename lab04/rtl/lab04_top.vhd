@@ -121,10 +121,6 @@ begin
       o_CS     => ACL_CSN,
       o_SCLK   => ACL_SCLK,
       i_MISO   => ACL_MISO);
-    
-    
-    
-    
 
   VGA : entity work.vga_controller(rtl)
     Port map(
