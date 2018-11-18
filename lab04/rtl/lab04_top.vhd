@@ -65,7 +65,7 @@ begin
                                     
   -- select char signals with w_disp
   
-  C_char_sel : process(w_mode, w_disp)
+  C_char_sel : process(w_mode, w_disp, w_data_ad, w_data_1d, w_data_x, w_data_y, w_data_z)
   begin
     if (w_mode = '1') then
       case w_disp is
@@ -104,10 +104,8 @@ begin
   
   end process C_char_sel;
 
-  
-  
-  
-  ACCEL_SPI : entity work.accel_spi_rw(rtl)
+
+  ACCEL_SPI : entity work.accel_spi_cntrl(rtl)
     Port map(
       i_clk    => CLK100MHZ,
       i_mode   => w_mode,

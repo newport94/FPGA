@@ -20,7 +20,10 @@ entity accel_spi_rw2 is
     i_rst    : in    STD_LOGIC;
     i_din    : in    STD_LOGIC_VECTOR(23 downto 0);
     o_dout   :   out STD_LOGIC_VECTOR(7 downto 0);
+    o_shift  :   out STD_LOGIC;
+    o_rd_vld :   out STD_LOGIC;
     o_done   :   out STD_LOGIC;
+    -- SPI SIGNALS
     o_MOSI   :   out STD_LOGIC; -- SPI signals for accelleromteter
     o_CS     :   out STD_LOGIC;
     o_SCLK   :   out STD_LOGIC;
@@ -29,44 +32,35 @@ end entity accel_spi_rw2;
 
 architecture rtl of accel_spi_rw2 is
 
-constant k_max_cnt : unsigned(4 downto 0) := to_unsigned(24,5);
+constant k_max_cnt : unsigned(4 downto 0) := to_unsigned(25,5); --to_unsigned(24,5);
 
 type spi_states is (IDLE, PREPARE, SHIFT, DONE);
 signal curr_state, next_state : spi_states;
 
-signal w_start_shift, w_shift_done, w_sclk_red, w_sclk_fed, w_cntr_en : std_logic;
+signal w_start_shift, w_shift_done, w_sclk_red, w_sclk_fed, w_cntr_en, w_rd_vld : std_logic;
 signal d_SCLK, q_SCLK, q_MOSI : std_logic; --, w_cs_toggle, q_cs : std_logic;
 signal q_bit_cntr : unsigned(4 downto 0);
 signal q_MOSI_shift : std_logic_vector(23 downto 0);
-signal q_MISO, q_dout : std_logic_vector(7 downto 0);
+signal q_MISO : std_logic_vector(7 downto 0);
 
 begin
   -- assign outputs
-  o_SCLK <= d_SCLK;
-  o_CS   <= '0' when (curr_state = SHIFT) else '1';
-  o_MOSI <= q_MOSI;
-  o_dout <= q_dout;
-  o_done <= '1' when curr_state = DONE;
+  o_SCLK   <= d_SCLK;
+  o_CS     <= '0' when (curr_state = SHIFT) else '1';
+  o_MOSI   <= q_MOSI;
+  o_dout   <= q_MISO when w_rd_vld = '1' else x"00";
+  o_shift  <= w_start_shift;
+  o_rd_vld <= w_rd_vld;
+  w_rd_vld <=  '1' when ((curr_state = SHIFT) AND (q_bit_cntr = (k_max_cnt - 1))) else '0';
+  o_done   <= '1' when (curr_state = DONE) else '0';
   
   -- SCLK edge detects
   w_sclk_red <= d_SCLK AND NOT q_SCLK; 
   w_sclk_fed <= q_SCLK AND NOT d_SCLK;  
   
-  -- output register 
-  P_DOUT : process(i_clk, i_rst)
-  begin
-    if (i_rst = '1') then 
-      q_dout <= (others => '0');
-    elsif (rising_edge(i_clk)) then 
-      if ((curr_state = SHIFT) OR (curr_state = DONE)) then 
-        q_dout <= q_MISO;
-      end if;
-    end if;
-  end process P_DOUT;
-    
+   
 
   -- shift registers
-  
   P_SHIFT_OUT : process(i_clk, i_rst)
   begin
     if (i_rst = '1') then 

@@ -51,6 +51,24 @@ begin
     -- MISO <= '1';
     -- wait for 2 ns;
     -- MISO <= '0';
+    wait for 3364 ns;
+    MISO <= '1';
+    wait for 200 ns;
+    MISO <= '0';
+    wait for 200 ns;
+    MISO <= '1';
+    wait for 200 ns;
+    MISO <= '0';
+    wait for 200 ns;
+    MISO <= '1';
+    wait for 200 ns;
+    MISO <= '0';
+    wait for 200 ns;
+    MISO <= '1';
+    wait for 200 ns;
+    MISO <= '0';
+    wait for 200 ns;
+    
     wait;
 
   end process;
