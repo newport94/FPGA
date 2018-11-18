@@ -37,13 +37,14 @@ end entity lab04_top;
  
 architecture rtl of lab04_top is
 
-  constant k_pos_thr_low  : unsigned(7 downto 0) := x"3A";
+  constant k_pos_thr_low  : unsigned(7 downto 0) := x"30";
   constant k_pos_thr_high : unsigned(7 downto 0) := x"60";  
-  constant k_neg_thr_low  : unsigned(7 downto 0) := x"C0";
+  constant k_neg_thr_low  : unsigned(7 downto 0) := x"D0";
   constant k_neg_thr_high : unsigned(7 downto 0) := x"A0";
+  
+  constant k_lvl_high : unsigned(7 downto 0) := x"10";
+  constant k_lvl_low  : unsigned(7 downto 0) := x"EF";
 
-
- 
   signal w_db_up, w_db_left, w_db_right, w_db_down : std_logic;
   signal w_rst, w_mode : std_logic;
   signal w_x_index, w_y_index : std_logic_vector(7 downto 0);
@@ -53,9 +54,14 @@ architecture rtl of lab04_top is
   signal w_char4, w_char5, w_char6, w_char7  : std_logic_vector (3 downto 0);
   signal w_mv_up, w_mv_left, w_mv_right, w_mv_down : std_logic;
   
-  signal q_accel_left, q_accel_right, q_accel_up, q_accel_down : std_logic;
-  signal d_accel_left, d_accel_right, d_accel_up, d_accel_down : std_logic;  
+  signal w_thresh_left, w_thresh_right, w_thresh_up, w_thresh_down : std_logic;  
   signal w_accel_left, w_accel_right, w_accel_up, w_accel_down : std_logic;    
+  
+  
+  type sq_states is (IDLE, CHECK_THRESH, MOVE_SQUARE, CHECK_LEVEL);
+  signal curr_state, next_state : sq_states;
+  
+  signal w_thresh_exceed, w_lvl, w_lvl_y, w_lvl_x : std_logic;
   
   
 
@@ -72,39 +78,70 @@ begin
                                     -- '01' --> display x data in digits 5-4, zeros in 7-6
                                     -- '10' --> display y data in digits 5-4, zeros in 7-6
                                     -- '11' --> dispaly z data in digits 5-4, zeros in 7-6
-                                    
+  
+  -- vga square movement multiplexer for current mode                                  
   w_mv_left  <= w_accel_left  when (w_mode = '1') else w_db_up   ;
   w_mv_right <= w_accel_right when (w_mode = '1') else w_db_left ;                              
   w_mv_up    <= w_accel_up    when (w_mode = '1') else w_db_right;                             
   w_mv_down  <= w_accel_down  when (w_mode = '1') else w_db_down ;
+  
+  -- accel move square signal for vga
+  w_accel_left  <= '1' when ((curr_state = MOVE_SQUARE) AND (w_thresh_left  = '1')) else '0'; 
+  w_accel_right <= '1' when ((curr_state = MOVE_SQUARE) AND (w_thresh_right = '1')) else '0';
+  w_accel_up    <= '1' when ((curr_state = MOVE_SQUARE) AND (w_thresh_up    = '1')) else '0';
+  w_accel_down  <= '1' when ((curr_state = MOVE_SQUARE) AND (w_thresh_down  = '1')) else '0';
                                 
   -- set accel thresholds for moving red square
-  -- positive threshold =  > 0x03
-  -- negative threshold =  < 0x0D
-  d_accel_left  <= '1' when ((unsigned(w_data_y) > k_pos_thr_low) AND (unsigned(w_data_y) < k_pos_thr_high)) else '0';
-  d_accel_right <= '1' when ((unsigned(w_data_y) < k_neg_thr_low) AND (unsigned(w_data_y) > k_neg_thr_high)) else '0';
-  d_accel_up    <= '1' when ((unsigned(w_data_x) < k_neg_thr_low) AND (unsigned(w_data_x) > k_neg_thr_high)) else '0';
-  d_accel_down  <= '1' when ((unsigned(w_data_x) > k_pos_thr_low) AND (unsigned(w_data_x) < k_pos_thr_high)) else '0';
+  w_thresh_exceed <= w_thresh_left OR w_thresh_right OR w_thresh_up OR w_thresh_down;
+  w_thresh_left   <= '1' when ((unsigned(w_data_y) > k_pos_thr_low) AND (unsigned(w_data_y) < k_pos_thr_high)) else '0';
+  w_thresh_right  <= '1' when ((unsigned(w_data_y) < k_neg_thr_low) AND (unsigned(w_data_y) > k_neg_thr_high)) else '0';
+  w_thresh_up     <= '1' when ((unsigned(w_data_x) < k_neg_thr_low) AND (unsigned(w_data_x) > k_neg_thr_high)) else '0';
+  w_thresh_down   <= '1' when ((unsigned(w_data_x) > k_pos_thr_low) AND (unsigned(w_data_x) < k_pos_thr_high)) else '0';
   
-  w_accel_left  <= d_accel_left  AND NOT q_accel_left;
-  w_accel_right <= d_accel_right AND NOT q_accel_right;
-  w_accel_up    <= d_accel_up    AND NOT q_accel_up;
-  w_accel_down  <= d_accel_down  AND NOT q_accel_down;
+  -- set accel thresholds for returning to "level"
+  w_lvl   <= w_lvl_x AND w_lvl_y;
+  w_lvl_x <= '1' when ((unsigned(w_data_x) < k_lvl_high ) OR (unsigned(w_data_x) > k_lvl_low)) else '0';
+  w_lvl_y <= '1' when ((unsigned(w_data_y) < k_lvl_high ) OR (unsigned(w_data_y) > k_lvl_low)) else '0';
   
-  S_accel_thresh : process(CLK100MHZ, w_rst)
+  
+  -- FSM for controlling accel red square threshold and movement
+  p_sq_accel_fsm_reg : process(CLK100MHZ, w_rst, w_mode)
   begin
-    if (w_rst = '1') then 
-      q_accel_left  <= '0';
-      q_accel_right <= '0';
-      q_accel_up    <= '0';
-      q_accel_down  <= '0';
+    if (w_rst = '1' OR w_mode = '0') then 
+      curr_state <= IDLE;
     elsif (rising_edge(CLK100MHZ)) then 
-      q_accel_left  <= d_accel_left ;
-      q_accel_right <= d_accel_right;
-      q_accel_up    <= d_accel_up   ;
-      q_accel_down  <= d_accel_down ;    
-    end if;
-  end process S_accel_thresh;
+      curr_state <= next_state;
+    end if;  
+  end process p_sq_accel_fsm_reg;
+  
+  p_sq_accel_fsm_logic : process(curr_state, w_mode, w_thresh_exceed, w_lvl)
+  begin
+    next_state <= curr_state;
+    case curr_state is 
+      when IDLE => 
+        if (w_mode = '1') then 
+          next_state <= CHECK_THRESH;
+         end if;
+         
+      when CHECK_THRESH =>
+        if (w_thresh_exceed = '1') then 
+          next_state <= MOVE_SQUARE;
+        end if;
+        
+      when MOVE_SQUARE =>
+        next_state <= CHECK_LEVEL;
+        
+      when CHECK_LEVEL =>
+        if (w_lvl = '1') then 
+          next_state <= CHECK_THRESH;
+        end if;
+      
+      when others =>
+        next_state <= IDLE;
+    end case;      
+  end process p_sq_accel_fsm_logic;
+  
+  
                                     
                                     
   -- select char signals with w_disp
