@@ -35,20 +35,6 @@ end entity mic_if;
 
 architecture rtl of mic_if is
 
-
-  component clk_wiz_0
-  port
-   (-- Clock in ports
-    -- Clock out ports
-    clk_out1          : out    std_logic;
-    -- Status and control signals
-    reset             : in     std_logic;
-    locked            : out    std_logic;
-    clk_in1           : in     std_logic
-   );
-  end component;
-
-
 constant  SR_WIDTH_C : unsigned(4 downto 0) := to_unsigned(sr_width_g, cntr_width_g);
 
 
@@ -58,8 +44,8 @@ signal bit_cntr_q : unsigned((cntr_width_g - 1) downto 0);
 signal sr_vld_q, mclk_q, mclk_d : STD_LOGIC;
 
 -- wires
-signal mclk_red_w, cntr_rst_w, mclk_edge_w, pll_locked_w: STD_LOGIC;
-signal clk_out1 : std_logic;
+signal mclk_red_w, cntr_rst_w, mclk_edge_w: STD_LOGIC;
+
 
 begin
 
@@ -67,8 +53,8 @@ begin
   sr_data_o <= sr_data_q;
   sr_vld_o  <= sr_vld_q;
   m_sel_o   <= '0';       -- select data on rising edge of mclk
-  m_clk_o   <= mclk_d when (rec_en_i = '1') else '0';
-
+  m_clk_o   <= mclk_d;
+  
   
   
   -------------------------------------------------------------------------
@@ -77,7 +63,8 @@ begin
   
  -- shift register combinatorial logic (conditionals)
  cntr_rst_w  <= '1' when (bit_cntr_q = (SR_WIDTH_C)) else '0';
- mclk_edge_w <= '1' when ((mclk_red_w = '1') AND (rec_en_i = '1')) else '0';
+ --mclk_edge_w <= '1' when ((mclk_red_w = '1') AND (rec_en_i = '1')) else '0';
+  mclk_edge_w <= mclk_red_w;
  
   -- deserializer shift register for pdm data
   p_shift_in : process(clk_100_i, rst_i)
@@ -112,10 +99,9 @@ begin
     end if;                            
   end process p_cnt_bits;
   
-  
-  
+
   ------------------------------------------------------------------------------
-  -- PDM CLOCK ~1.024 MHz
+  -- PDM CLOCK 2 MHz
   -----------------------------------------------------------------------------
   
   -- rising edge detect
@@ -123,23 +109,13 @@ begin
   
   clk_div : entity work.clk_div(rtl)
   Generic Map(
-    g_max_cnt   => 49,
-    g_max_width => 6)
+    g_max_cnt   => 25,
+    g_max_width => 5)
   Port Map(
     i_clk        => clk_100_i,
     i_reset      => rst_i,
     o_clk_div    => mclk_d);
-    
-  -- mmcm_5d118MHz : clk_wiz_0
-     -- port map ( 
-    -- -- Clock out ports  
-     -- clk_out1 => clk_out1,
-    -- -- Status and control signals                
-     -- reset => rst_i,
-     -- locked => pll_locked_w,
-     -- -- Clock in ports
-     -- clk_in1 => clk_100_i
-   -- );    
+
     
     
 end architecture rtl;

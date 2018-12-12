@@ -63,6 +63,8 @@ architecture rtl of pdm_filter is
 
 begin
 
+  fir_data_o <= cic_data_out(31 downto 16);
+  fir_vld_o  <= cic_vld_out;
 
   U_CIC_32kHz: cic_dec_64
   PORT MAP (
@@ -72,18 +74,18 @@ begin
     s_axis_data_tready => open,
     m_axis_data_tdata  => cic_data_out,
     m_axis_data_tvalid => cic_vld_out,
-    m_axis_data_tready => fir_to_cic_rdy,
+    m_axis_data_tready => '1',--fir_to_cic_rdy,
     event_halted       => open);
 
-  U_FIR_16kHz: fir_comp_dec2
-  PORT MAP (
-    aclk               => clk_100_i,
-    s_axis_data_tvalid => cic_vld_out,
-    s_axis_data_tready => fir_to_cic_rdy,
-    s_axis_data_tdata  => cic_data_out,
-    m_axis_data_tvalid => fir_vld_o,
-    m_axis_data_tready => rdy_to_fir_i,
-    m_axis_data_tdata  => fir_data_o);
+  -- U_FIR_16kHz: fir_comp_dec2
+  -- PORT MAP (
+    -- aclk               => clk_100_i,
+    -- s_axis_data_tvalid => cic_vld_out,
+    -- s_axis_data_tready => fir_to_cic_rdy,
+    -- s_axis_data_tdata  => cic_data_out,
+    -- m_axis_data_tvalid => fir_vld_o,
+    -- m_axis_data_tready => rdy_to_fir_i,
+    -- m_axis_data_tdata  => fir_data_o);
 
 
 end architecture rtl;
