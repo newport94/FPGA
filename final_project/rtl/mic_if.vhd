@@ -39,19 +39,18 @@ constant  SR_WIDTH_C : unsigned(4 downto 0) := to_unsigned(sr_width_g, cntr_widt
 
 
 -- registers
-signal m_data_q, sr_data_q : STD_LOGIC_VECTOR((sr_width_g - 1) downto 0);
+signal m_data_q : STD_LOGIC_VECTOR((sr_width_g - 1) downto 0);
 signal bit_cntr_q : unsigned((cntr_width_g - 1) downto 0);
-signal sr_vld_q, mclk_q, mclk_d : STD_LOGIC;
+signal mclk_q, mclk_d, cntr_rst_q : STD_LOGIC;
 
 -- wires
-signal mclk_red_w, cntr_rst_w, mclk_edge_w: STD_LOGIC;
+signal mclk_red_w, cntr_rst_d, mclk_edge_w: STD_LOGIC;
 
 
 begin
 
   -- wire up outputs
-  sr_data_o <= sr_data_q;
-  sr_vld_o  <= sr_vld_q;
+  sr_vld_o  <= cntr_rst_q;
   m_sel_o   <= '0';       -- select data on rising edge of mclk
   m_clk_o   <= mclk_d;
   
@@ -62,7 +61,7 @@ begin
   -------------------------------------------------------------------------
   
  -- shift register combinatorial logic (conditionals)
- cntr_rst_w  <= '1' when (bit_cntr_q = (SR_WIDTH_C)) else '0';
+ cntr_rst_d  <= '1' when (bit_cntr_q = (SR_WIDTH_C)) else '0';
  --mclk_edge_w <= '1' when ((mclk_red_w = '1') AND (rec_en_i = '1')) else '0';
   mclk_edge_w <= mclk_red_w;
  
@@ -83,19 +82,18 @@ begin
   begin
     if (rst_i = '1') then 
       bit_cntr_q <= (others => '0');
-      sr_data_q  <= (others => '0');
-      sr_vld_q   <= '0';
+      mclk_q <= '0';
+      cntr_rst_q <= '0';
     elsif (rising_edge(clk_100_i)) then 
-      if (cntr_rst_w = '1') then 
+      if (cntr_rst_d = '1') then 
         bit_cntr_q <= (others => '0');   
-        sr_vld_q   <= '1';
-        sr_data_q  <= m_data_q;
+        sr_data_o  <= m_data_q;
       
       elsif (mclk_edge_w = '1') then 
-        sr_vld_q <= '0';
         bit_cntr_q <= bit_cntr_q + 1;
       end if;
       mclk_q <= mclk_d;      
+      cntr_rst_q <= cntr_rst_d;  
     end if;                            
   end process p_cnt_bits;
   

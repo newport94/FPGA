@@ -31,8 +31,9 @@ architecture rtl of audio_if is
   signal data_vol_w : std_logic_vector(15 downto 0);
   
   -- registers
-  signal mclk2_d, mclk2_q : std_logic;
+  signal mclk2_d, mclk2_q, mclk2_qq, mclk2_qqq : std_logic;
   signal shift_q : std_logic_vector(15 downto 0);
+  signal q_cntr : std_logic_vector(4 downto 0);
 
 begin
 
@@ -56,25 +57,28 @@ begin
       shift_q <= (others => '0');
     elsif (rising_edge(clk_100_i)) then 
       mclk2_q <= mclk2_d;
-      if (mclk2_red_w = '1') then 
-        if (vld_i = '1') then
-          shift_q <= data_i;
-        else
-          shift_q   <= shift_q(14 downto 0) & '0';
-          aud_pwm_o <= shift_q(15);
-        end if;
+
+      if (vld_i = '1') then
+        shift_q <= data_vol_w;      
+      elsif (mclk2_red_w = '1') then 
+        
+        shift_q   <= shift_q(14 downto 0) & '0';
+        aud_pwm_o <= shift_q(15);
       end if;
     end if;      
   end process p_shift_out;
 
-
+      
   
     ------------------------------------------------------------------------------
   -- AUDIO CLOCK 2 MHz
   -----------------------------------------------------------------------------
   
   -- rising edge detect
+  --mclk2_red_w <= mclk2_d AND NOT mclk2_q;
   mclk2_red_w <= mclk2_d AND NOT mclk2_q;
+
+
   
   aud_clk_2MHz : entity work.clk_div(rtl)
   Generic Map(
