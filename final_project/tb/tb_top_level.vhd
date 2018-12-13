@@ -37,8 +37,7 @@ component final_proj_top is
     -- Audio jack signals
     AUD_PWM   :   out STD_LOGIC;                      -- audio pwm output
     AUD_SD    :   out STD_LOGIC;
-    LED       :   out STD_LOGIC_VECTOR(15 downto 0);  
-    FIFO_CNT  :   out STD_LOGIC_VECTOR(5 DOWNTO 0));-- audio output enable
+    LED       :   out STD_LOGIC_VECTOR(15 downto 0));-- audio output enable
 end component;
 
 
@@ -51,8 +50,6 @@ signal aud_out, aud_en_in, aud_en_out : std_logic;
 signal switches, leds : std_logic_vector(15 downto 0);
 signal volume : std_logic_vector(2 downto 0);
 signal BTNL, BTNR : std_logic;
-signal fifo_count : std_logic_vector(5 downto 0);
-
 
 begin
 
@@ -97,10 +94,10 @@ begin
     BTNL <= '1';
     wait for 2 us;
     BTNL <= '0';
-    wait for 50 us;
-    BTNR <= '1';
-    wait for 2 us;
-    BTNR <= '0'; 
+    -- wait for 50 us;
+    -- BTNR <= '1';
+    -- wait for 2 us;
+    -- BTNR <= '0'; 
     wait;
   end process;
     
@@ -119,8 +116,7 @@ begin
       M_LRSEL   => mic_sel,
       AUD_PWM   => aud_out,
       AUD_SD    => aud_en_out,
-      LED       => leds,
-      FIFO_CNT  => fifo_count);
+      LED       => leds);
 
 
       

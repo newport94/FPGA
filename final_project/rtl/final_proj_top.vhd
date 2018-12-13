@@ -58,11 +58,25 @@ architecture rtl of final_proj_top is
       empty        :   OUT STD_LOGIC;
       almost_empty :   OUT STD_LOGIC;
       valid        :   OUT STD_LOGIC;
-      data_count   :   OUT STD_LOGIC_VECTOR(16 DOWNTO 0));
+      data_count   :   OUT STD_LOGIC_VECTOR(13 DOWNTO 0));
    END COMPONENT;
+   
+  COMPONENT cic_dec_64
+    PORT (
+      aclk : IN STD_LOGIC;
+      s_axis_data_tdata : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+      s_axis_data_tvalid : IN STD_LOGIC;
+      s_axis_data_tready : OUT STD_LOGIC;
+      m_axis_data_tdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+      m_axis_data_tvalid : OUT STD_LOGIC;
+      m_axis_data_tready : IN STD_LOGIC;
+      event_halted : OUT STD_LOGIC
+    );   
+  END COMPONENT;
 
   -- constants
   constant WORD_WIDTH_C : integer := 16;
+  constant BIT_HIGH_C : std_logic := '1';
 
   -- registers
   signal srst_q, srst_qq, rec_q, play_q : std_logic;
@@ -70,12 +84,13 @@ architecture rtl of final_proj_top is
   -- wires
   signal word_vld_w, rec_strobe_w, play_strobe_w : std_logic;
   signal fifo_full_w, fifo_empty_w, fifo_wr_en_w, fifo_rd_en_w, audio_vld_w: std_logic;
-  signal aud_rd_req_w, rst_w : std_logic;
+  signal aud_rd_req_w, rst_w, filt_vld_w : std_logic;
   signal switch_vol_w : std_logic_vector(2 downto 0);
   signal pb_array_w, db_array_w : std_logic_vector(1 downto 0);
-  signal mic_word_w, audio_word_w : std_logic_vector(WORD_WIDTH_C-1 downto 0);
-  signal fifo_count_w : std_logic_vector(16 DOWNTO 0);
+  signal mic_word_w, audio_word_w, data_filt_w : std_logic_vector(WORD_WIDTH_C-1 downto 0);
+  signal fifo_count_w : std_logic_vector(13 DOWNTO 0);
 
+  
 
 begin
 
@@ -128,7 +143,7 @@ begin
   end process p_control;
     
     
-  fifo_wr_en_w <= '1' when  (rec_q  = '1') AND (word_vld_w = '1')  else '0';
+  fifo_wr_en_w <= '1' when  (rec_q  = '1') AND (filt_vld_w = '1')  else '0';
   fifo_rd_en_w <= '1' when (play_q = '1') AND (aud_rd_req_w = '1') else '0';
    
 
@@ -150,12 +165,22 @@ begin
     sr_data_o => mic_word_w,
     sr_vld_o  => word_vld_w);
     
+  U_CIC_FIR : entity work.pdm_filter(rtl) 
+  Port Map(
+    clk_100_i    => CLK100MHZ,    --: in    STD_LOGIC;
+    rst_i        => rst_w,         --: in    STD_LOGIC;
+    pdm_word_i   => mic_word_w,   --: in    STD_LOGIC_VECTOR(15 downto 0);
+    word_vld_i   => word_vld_w,   --: in    STD_LOGIC;
+    fir_data_o   => data_filt_w,  --:   out STD_LOGIC(15 downto 0);
+    fir_vld_o    => filt_vld_w,   --:   out STD_LOGIC;
+    rdy_to_fir_i => BIT_HIGH_C);         --: in    STD_LOGIC;    
+    
    
   U_FIFO : fifo_generator_0
     PORT MAP (
       clk          => CLK100MHZ,
       srst         => srst_qq,
-      din          => mic_word_w,
+      din          => data_filt_w,
       wr_en        => fifo_wr_en_w, -- need:  data valid AND record enable
       rd_en        => fifo_rd_en_w, -- need:  generate read enable during playback mode
       dout         => audio_word_w,
@@ -186,8 +211,8 @@ begin
       i_char0 => fifo_count_w(3 downto 0),
       i_char1 => fifo_count_w(7 downto 4),
       i_char2 => fifo_count_w(11 downto 8),
-      i_char3 => fifo_count_w(15 downto 12),
-      i_char4 => fifo_count_w(16 downto 13),
+      i_char3 => "00" & fifo_count_w(13 downto 12),
+      i_char4 => x"0",
       i_char5 => x"0",
       i_char6 => x"0",
       i_char7 => x"0",
@@ -206,15 +231,7 @@ begin
   end generate GEN_PUSH_BUTTONS;
   
 
-  -- U_CIC_FIR : entity work.pdm_filter(rtl) 
-  -- Port Map(
-    -- clk_100_i    => CLK100MHZ,    --: in    STD_LOGIC;
-    -- rst_i        => BTNC,         --: in    STD_LOGIC;
-    -- pdm_word_i   => mic_word_w,   --: in    STD_LOGIC_VECTOR(15 downto 0);
-    -- word_vld_i   => word_vld_w,   --: in    STD_LOGIC;
-    -- fir_data_o   => data_filt_d,  --:   out STD_LOGIC(15 downto 0);
-    -- fir_vld_o    => filt_vld_d,   --:   out STD_LOGIC;
-    -- rdy_to_fir_i => '1' );         --: in    STD_LOGIC;
+
     
     
   -- p_reg_filt : process(CLK100MHZ, BTNC)
@@ -222,9 +239,9 @@ begin
     -- if (BTNC = '1') then 
       -- data_aud_q <= (others => '0');
     -- elsif (rising_edge(CLK100MHZ)) then 
-      -- filt_vld_q <= filt_vld_d;
-      -- if (filt_vld_d = '1') then 
-        -- data_aud_q <= data_filt_d;
+      -- filt_vld_q <= filt_vld_w;
+      -- if (filt_vld_w = '1') then 
+        -- data_aud_q <= data_filt_w;
 
       -- end if;
     -- end if;  

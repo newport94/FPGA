@@ -31,17 +31,18 @@ end entity pdm_filter;
 
 architecture rtl of pdm_filter is
 
-  COMPONENT cic_dec_64
-    PORT (
-      aclk               : IN    STD_LOGIC;
-      s_axis_data_tdata  : IN    STD_LOGIC_VECTOR(15 DOWNTO 0);
-      s_axis_data_tvalid : IN    STD_LOGIC;
-      s_axis_data_tready :   OUT STD_LOGIC;
-      m_axis_data_tdata  :   OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      m_axis_data_tvalid :   OUT STD_LOGIC;
-      m_axis_data_tready : IN    STD_LOGIC;
-      event_halted       :   OUT STD_LOGIC);
-  END COMPONENT;
+COMPONENT cic_dec_64
+  PORT (
+    aclk : IN STD_LOGIC;
+    s_axis_data_tdata : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    s_axis_data_tvalid : IN STD_LOGIC;
+    s_axis_data_tready : OUT STD_LOGIC;
+    m_axis_data_tdata : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    m_axis_data_tvalid : OUT STD_LOGIC;
+    m_axis_data_tready : IN STD_LOGIC;
+    event_halted : OUT STD_LOGIC
+  );
+  END COMPONENT;    
   
   COMPONENT fir_comp_dec2
     PORT (
@@ -74,7 +75,7 @@ begin
     s_axis_data_tready => open,
     m_axis_data_tdata  => cic_data_out,
     m_axis_data_tvalid => cic_vld_out,
-    m_axis_data_tready => '1',--fir_to_cic_rdy,
+    m_axis_data_tready => rdy_to_fir_i,--fir_to_cic_rdy,
     event_halted       => open);
 
   -- U_FIR_16kHz: fir_comp_dec2
