@@ -25,8 +25,8 @@ end entity debounce;
   
 architecture rtl of debounce is 
 
-constant k_max_val    : unsigned(23 downto 0) := to_unsigned(10000000, 24); -- 100 ms assuming a 100 MHz clk
---constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
+--constant k_max_val    : unsigned(23 downto 0) := to_unsigned(10000000, 24); -- 100 ms assuming a 100 MHz clk
+constant k_max_val    : unsigned(6 downto 0) := "110" & x"4";  -- 1 us assuming a 100 MHz clk (SIM ONLY)
 signal   q_ctr : unsigned(24 downto 0);
 
 signal w_ctr_clr, w_ctr_en : std_logic;

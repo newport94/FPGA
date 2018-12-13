@@ -19,7 +19,8 @@ entity audio_if is
     clk_100_i   : in    STD_LOGIC;
     rst_i       : in    STD_LOGIC;  
     data_i      : in    STD_LOGIC_VECTOR(15 downto 0);
-    vld_i       : in    STD_LOGIC;
+    data_vld_i  : in    STD_LOGIC;
+    rd_req_o    :   out STD_LOGIC;
     sw_vol_i    : in    STD_LOGIC_VECTOR(2 downto 0);
     aud_pwm_o   :   out STD_LOGIC);
 end entity audio_if;
@@ -27,39 +28,30 @@ end entity audio_if;
 architecture rtl of audio_if is
 
   -- wires
-  signal mclk2_red_w : std_logic;
-  signal data_vol_w : std_logic_vector(15 downto 0);
+  signal mclk2_red_w, rd_clk_red_w : std_logic;
   
   -- registers
-  signal mclk2_d, mclk2_q, mclk2_qq, mclk2_qqq : std_logic;
+  signal mclk2_d, mclk2_q, rd_clk_d, rd_clk_q : std_logic;
   signal shift_q : std_logic_vector(15 downto 0);
-  signal q_cntr : std_logic_vector(4 downto 0);
+ -- signal q_cntr : std_logic_vector(4 downto 0);
 
 begin
 
-  -- assign outputs
-
-  with sw_vol_i select
-   data_vol_w <=
-     std_logic_vector(shift_right(unsigned(data_i), 7)) when "000",
-     std_logic_vector(shift_right(unsigned(data_i), 6)) when "001",
-     std_logic_vector(shift_right(unsigned(data_i), 5)) when "010",
-     std_logic_vector(shift_right(unsigned(data_i), 4)) when "011",
-     std_logic_vector(shift_right(unsigned(data_i), 3)) when "100",
-     std_logic_vector(shift_right(unsigned(data_i), 2)) when "101",
-     std_logic_vector(shift_right(unsigned(data_i), 1)) when "110",
-     data_i                 when others;
+  -- assign read_request
+  rd_req_o <= rd_clk_red_w;
 
      
   p_shift_out : process(clk_100_i, rst_i)
   begin
     if (rst_i = '1') then 
       shift_q <= (others => '0');
+      mclk2_q <= '0';
     elsif (rising_edge(clk_100_i)) then 
-      mclk2_q <= mclk2_d;
+      mclk2_q  <= mclk2_d;
+      rd_clk_q <= rd_clk_d;
 
-      if (vld_i = '1') then
-        shift_q <= data_vol_w;      
+      if (data_vld_i = '1') then
+        shift_q <= data_i;      
       elsif (mclk2_red_w = '1') then 
         
         shift_q   <= shift_q(14 downto 0) & '0';
@@ -76,10 +68,9 @@ begin
   
   -- rising edge detect
   --mclk2_red_w <= mclk2_d AND NOT mclk2_q;
-  mclk2_red_w <= mclk2_d AND NOT mclk2_q;
+  mclk2_red_w  <= mclk2_d AND NOT mclk2_q;
+  rd_clk_red_w <= rd_clk_d AND NOT rd_clk_q;
 
-
-  
   aud_clk_2MHz : entity work.clk_div(rtl)
   Generic Map(
     g_max_cnt   => 25,
@@ -88,5 +79,14 @@ begin
     i_clk        => clk_100_i,
     i_reset      => rst_i,
     o_clk_div    => mclk2_d);
+    
+  rd_clk_125kHz : entity work.clk_div(rtl)
+  Generic Map(
+    g_max_cnt   => 400,
+    g_max_width => 9)
+  Port Map(
+    i_clk        => clk_100_i,
+    i_reset      => rst_i,
+    o_clk_div    => rd_clk_d);    
     
 end architecture rtl;

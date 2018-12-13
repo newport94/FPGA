@@ -24,8 +24,9 @@ architecture tb of tb_top_level is
 component final_proj_top is
   Port(
     CLK100MHZ : in    STD_LOGIC;
-    SW        : in    STD_LOGIC_VECTOR(15 downto 0);    -- 
-    BTNC      : in    STD_LOGIC;                       -- overall reset
+    SW        : in    STD_LOGIC_VECTOR(15 downto 0);    
+    BTNR      : in    STD_LOGIC;   
+    BTNL      : in    STD_LOGIC;
     -- seven seg display
     SEG7_CATH :   out STD_LOGIC_VECTOR(7 downto 0);   -- seven segment controller
     AN        :   out STD_LOGIC_VECTOR(7 downto 0);
@@ -35,30 +36,33 @@ component final_proj_top is
     M_LRSEL   :   out STD_LOGIC;
     -- Audio jack signals
     AUD_PWM   :   out STD_LOGIC;                      -- audio pwm output
-    AUD_SD    :   out STD_LOGIC);                     -- audio output enable
+    AUD_SD    :   out STD_LOGIC;
+    LED       :   out STD_LOGIC_VECTOR(15 downto 0);  
+    FIFO_CNT  :   out STD_LOGIC_VECTOR(5 DOWNTO 0));-- audio output enable
 end component;
 
 
 signal clk   : STD_LOGIC;
 signal rst   : STD_LOGIC;
 
-signal mic_clk, mic_sel, rec_enable, pdm_vld, mdata : std_logic;
+signal mic_clk, mic_sel, pdm_vld, mdata : std_logic;
 signal pdm_data : std_logic_vector(15 downto 0);
 signal aud_out, aud_en_in, aud_en_out : std_logic;
-signal switches : std_logic_vector(15 downto 0);
+signal switches, leds : std_logic_vector(15 downto 0);
 signal volume : std_logic_vector(2 downto 0);
+signal BTNL, BTNR : std_logic;
+signal fifo_count : std_logic_vector(5 downto 0);
 
 
 begin
 
 
   rst     <= '0', '1' after 20 ns, '0' after 100 ns;
-  rec_enable <= '0', '1' after 1000 ns;
   
   volume <= "011";
   aud_en_in <= '1';
   
-  switches <= aud_en_in & rec_enable & "00000000" & volume & "000";
+  switches <= aud_en_in & '0' & "00000000" & volume & "00" & rst;
   
 
   
@@ -85,6 +89,20 @@ begin
     mdata <= '1';
     wait for 1 us;
   end process;
+  
+  process
+  begin
+    BTNL <= '0';
+    wait for 5.3 us;
+    BTNL <= '1';
+    wait for 2 us;
+    BTNL <= '0';
+    wait for 50 us;
+    BTNR <= '1';
+    wait for 2 us;
+    BTNR <= '0'; 
+    wait;
+  end process;
     
 
 
@@ -92,14 +110,17 @@ begin
     Port Map(
       CLK100MHZ => clk,
       SW        => switches,
-      BTNC      => rst,
+      BTNL      => BTNL,
+      BTNR      => BTNR,
       SEG7_CATH => open,
       AN        => open,
       M_CLK     => mic_clk,
       M_DATA    => mdata,
       M_LRSEL   => mic_sel,
       AUD_PWM   => aud_out,
-      AUD_SD    => aud_en_out);
+      AUD_SD    => aud_en_out,
+      LED       => leds,
+      FIFO_CNT  => fifo_count);
 
 
       

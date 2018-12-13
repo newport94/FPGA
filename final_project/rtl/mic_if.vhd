@@ -27,7 +27,7 @@ entity mic_if is
     m_clk_o   :   out STD_LOGIC;
     m_sel_o   :   out STD_LOGIC;
     -- record enable 
-    rec_en_i  : in   STD_LOGIC;
+    rec_strobe_w_i  : in   STD_LOGIC;
     -- data out sigs
     sr_data_o :   out STD_LOGIC_VECTOR((sr_width_g - 1) downto 0);
     sr_vld_o  :   out STD_LOGIC);
