@@ -70,7 +70,8 @@ architecture rtl of final_proj_top is
   -- wires
   signal word_vld_w, rec_strobe_w, play_strobe_w : std_logic;
   signal fifo_full_w, fifo_empty_w, fifo_wr_en_w, fifo_rd_en_w, audio_vld_w: std_logic;
-  signal aud_rd_req_w, rst_w : std_logic;
+  signal aud_rd_req_w, rst_w: std_logic;
+  signal play_speed_w : std_logic_vector(1 downto 0);
   signal switch_vol_w : std_logic_vector(2 downto 0);
   signal pb_array_w, db_array_w : std_logic_vector(1 downto 0);
   signal mic_word_w, audio_word_w : std_logic_vector(WORD_WIDTH_C-1 downto 0);
@@ -92,7 +93,7 @@ begin
 
   -- switches
   AUD_SD       <= SW(15);  
-  switch_vol_w <= SW(5 downto 3);
+  play_speed_w <= SW(3 downto 2);
   rst_w        <= SW(0);  
   
   -- synch rst for FIFO
@@ -169,13 +170,14 @@ begin
 
   U_AUD_IF : entity work.audio_if(rtl)
   Port map(
-    clk_100_i   => CLK100MHZ,   
-    rst_i       => rst_w,        
-    data_i      => audio_word_w,
-    data_vld_i  => audio_vld_w,
-    rd_req_o    => aud_rd_req_w, 
-    sw_vol_i    => switch_vol_w,
-    aud_pwm_o   => AUD_PWM);    
+    clk_100_i    => CLK100MHZ,   
+    rst_i        => rst_w,        
+    data_i       => audio_word_w,
+    data_vld_i   => audio_vld_w,
+    rd_req_o     => aud_rd_req_w, 
+    sw_vol_i     => switch_vol_w,
+    aud_pwm_o    => AUD_PWM,
+    play_speed_i => play_speed_w);    
     
     
     
